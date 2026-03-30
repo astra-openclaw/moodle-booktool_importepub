@@ -18,7 +18,7 @@
  * Library hooks for the EPUB import book tool.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -31,19 +31,19 @@ defined('MOODLE_INTERNAL') || die();
  * @param settings_navigation $settings Settings navigation.
  * @param navigation_node $node Current navigation node.
  */
-function booktool_importepub_extend_settings_navigation(settings_navigation $settings, navigation_node $node): void {
+function booktool_epubimport_extend_settings_navigation(settings_navigation $settings, navigation_node $node): void {
     $page = $settings->get_page();
     if (empty($page->cm) || empty($page->cm->context)) {
         return;
     }
 
-    if (!has_capability('booktool/importepub:import', $page->cm->context)) {
+    if (!has_capability('booktool/epubimport:import', $page->cm->context)) {
         return;
     }
 
-    $url = new moodle_url('/mod/book/tool/importepub/index.php', ['id' => $page->cm->id]);
+    $url = new moodle_url('/mod/book/tool/epubimport/index.php', ['id' => $page->cm->id]);
     $node->add(
-        get_string('importepub', 'booktool_importepub'),
+        get_string('importepub', 'booktool_epubimport'),
         $url,
         navigation_node::TYPE_SETTING,
         null,

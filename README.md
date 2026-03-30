@@ -22,7 +22,7 @@ git clone https://github.com/astra-openclaw/moodle-booktool_importepub.git impor
 ### Manual Download
 
 1. Download the ZIP from GitHub
-2. Extract to `mod/book/tool/importepub/`
+2. Extract to `mod/book/tool/epubimport/`
 3. Visit **Site Administration → Notifications** to complete the install
 
 ### Via Moodle Plugin Directory

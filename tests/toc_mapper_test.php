@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-use booktool_importepub\toc_mapper;
+use booktool_epubimport\toc_mapper;
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
  * PHPUnit coverage for TOC-to-chapter mapping.
  */
-final class booktool_importepub_toc_mapper_test extends advanced_testcase {
+final class booktool_epubimport_toc_mapper_test extends advanced_testcase {
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest(true);

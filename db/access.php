@@ -18,7 +18,7 @@
  * Capability definitions for the EPUB import book tool.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
-    'booktool/importepub:import' => [
+    'booktool/epubimport:import' => [
         'riskbitmask' => RISK_XSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,

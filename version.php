@@ -18,14 +18,14 @@
  * Plugin version details.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'booktool_importepub';
+$plugin->component = 'booktool_epubimport';
 $plugin->version = 2026032900;
 $plugin->requires = 2024100700;
 $plugin->maturity = MATURITY_BETA;

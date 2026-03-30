@@ -18,7 +18,7 @@
  * English language strings for the EPUB import book tool.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

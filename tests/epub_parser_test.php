@@ -1,14 +1,14 @@
 <?php
 declare(strict_types=1);
 
-use booktool_importepub\epub_parser;
+use booktool_epubimport\epub_parser;
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
  * PHPUnit coverage for the EPUB parser.
  */
-final class booktool_importepub_epub_parser_test extends advanced_testcase {
+final class booktool_epubimport_epub_parser_test extends advanced_testcase {
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest(true);
@@ -177,7 +177,7 @@ final class booktool_importepub_epub_parser_test extends advanced_testcase {
         $fs = get_file_storage();
         $record = [
             'contextid' => \context_system::instance()->id,
-            'component' => 'booktool_importepub',
+            'component' => 'booktool_epubimport',
             'filearea' => 'tests',
             'itemid' => random_int(1, 1000000),
             'filepath' => '/',

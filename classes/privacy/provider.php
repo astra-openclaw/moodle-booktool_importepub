@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-namespace booktool_importepub\privacy;
+namespace booktool_epubimport\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -22,7 +22,7 @@ defined('MOODLE_INTERNAL') || die();
  * Privacy provider for the EPUB import tool.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

@@ -18,7 +18,7 @@
  * Import EPUB form.
  *
  * @package    booktool
- * @subpackage importepub
+ * @subpackage epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -34,10 +34,10 @@ require_once($CFG->libdir . '/formslib.php');
  * @param string $fallback English fallback.
  * @return string
  */
-function booktool_importepub_local_string(string $identifier, string $fallback): string {
+function booktool_epubimport_local_string(string $identifier, string $fallback): string {
     $stringmanager = get_string_manager();
-    if ($stringmanager->string_exists($identifier, 'booktool_importepub')) {
-        return get_string($identifier, 'booktool_importepub');
+    if ($stringmanager->string_exists($identifier, 'booktool_epubimport')) {
+        return get_string($identifier, 'booktool_epubimport');
     }
 
     return $fallback;
@@ -46,7 +46,7 @@ function booktool_importepub_local_string(string $identifier, string $fallback):
 /**
  * Moodle form for EPUB upload and import mode selection.
  */
-class booktool_importepub_form extends moodleform {
+class booktool_epubimport_form extends moodleform {
     /** @var string Existing-book workflow identifier. */
     private const WORKFLOW_EXISTING = 'existing';
 
@@ -65,14 +65,14 @@ class booktool_importepub_form extends moodleform {
         $workflow = (string)($data['workflow'] ?? self::WORKFLOW_EXISTING);
 
         $heading = $workflow === self::WORKFLOW_EXISTING
-            ? booktool_importepub_local_string('importchapters', 'Import chapters from ebook')
-            : booktool_importepub_local_string('importepub', 'Import ebook as new book');
+            ? booktool_epubimport_local_string('importchapters', 'Import chapters from ebook')
+            : booktool_epubimport_local_string('importepub', 'Import ebook as new book');
 
         $mform->addElement('header', 'general', $heading);
         $mform->addElement(
             'filepicker',
             'importfile',
-            booktool_importepub_local_string('epubfile', 'EPUB ebook'),
+            booktool_epubimport_local_string('epubfile', 'EPUB ebook'),
             null,
             ['accepted_types' => ['.epub']]
         );
@@ -82,13 +82,13 @@ class booktool_importepub_form extends moodleform {
             $mform->addElement(
                 'select',
                 'importmode',
-                booktool_importepub_local_string('importmode', 'Import mode'),
+                booktool_epubimport_local_string('importmode', 'Import mode'),
                 [
-                    self::MODE_APPEND => booktool_importepub_local_string(
+                    self::MODE_APPEND => booktool_epubimport_local_string(
                         'importmodeappend',
                         'Add chapters to this book'
                     ),
-                    self::MODE_REPLACE => booktool_importepub_local_string(
+                    self::MODE_REPLACE => booktool_epubimport_local_string(
                         'importmodereplace',
                         'Replace all chapters'
                     ),
@@ -100,7 +100,7 @@ class booktool_importepub_form extends moodleform {
                 'advcheckbox',
                 'confirmreplace',
                 '',
-                booktool_importepub_local_string(
+                booktool_epubimport_local_string(
                     'confirmreplace',
                     'I understand that replacing will delete the current chapters before import.'
                 )
@@ -172,7 +172,7 @@ class booktool_importepub_form extends moodleform {
         if (($data['workflow'] ?? self::WORKFLOW_EXISTING) === self::WORKFLOW_EXISTING
                 && ($data['importmode'] ?? self::MODE_APPEND) === self::MODE_REPLACE
                 && empty($data['confirmreplace'])) {
-            $errors['confirmreplace'] = booktool_importepub_local_string(
+            $errors['confirmreplace'] = booktool_epubimport_local_string(
                 'confirmreplaceerror',
                 'Confirm replacement before deleting the current chapters.'
             );

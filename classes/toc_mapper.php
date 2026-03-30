@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace booktool_importepub;
+namespace booktool_epubimport;
 
 use InvalidArgumentException;
 
