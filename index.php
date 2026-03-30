@@ -72,7 +72,7 @@ $pageparams = ['workflow' => $workflow];
 
 if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING) {
     if ($id <= 0) {
-        print_error('missingparam', 'error', '', 'id');
+        throw new moodle_exception('missingparam', 'error', '', 'id');
     }
 
     $cm = get_coursemodule_from_id('book', $id, 0, false, MUST_EXIST);
@@ -111,7 +111,7 @@ if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING) {
         $pageparams['id'] = $cm->id;
     } else {
         if ($courseid <= 0) {
-            print_error('missingparam', 'error', '', 'courseid');
+            throw new moodle_exception('missingparam', 'error', '', 'courseid');
         }
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
@@ -266,19 +266,19 @@ function booktool_importepub_get_uploaded_file(int $draftitemid): stored_file {
     global $USER;
 
     if ($draftitemid <= 0) {
-        print_error('required');
+        throw new moodle_exception('required');
     }
 
     $fs = get_file_storage();
     $usercontext = context_user::instance($USER->id);
     $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id DESC', false);
     if ($files === []) {
-        print_error('required');
+        throw new moodle_exception('required');
     }
 
     $file = reset($files);
     if (!$file instanceof stored_file) {
-        print_error('required');
+        throw new moodle_exception('required');
     }
 
     return $file;

@@ -1,6 +1,6 @@
 # Lucimoo EPUB Import for Moodle 5.x
 
-Import EPUB ebooks into Moodle Book resources. Supports both reflowable and fixed-layout EPUBs, including textbooks with CSS-positioned text overlays (e.g. McGraw-Hill Inspire Science).
+Import EPUB ebooks into Moodle Book resources. Supports both reflowable and fixed-layout EPUBs.
 
 **Fork of [HaakonME/moodle-booktool_importepub](https://github.com/HaakonME/moodle-booktool_importepub)**, originally by Mikael Ylikoski (Ordbrand). Modernized for Moodle 5.x with a complete rewrite of the import pipeline.
 
@@ -10,82 +10,82 @@ Import EPUB ebooks into Moodle Book resources. Supports both reflowable and fixe
 - PHP 8.1+
 - PHP `zip` extension
 
-For fixed-layout EPUBs with CSS text overlays (pre-rendering):
-- Node.js 18+
-- Playwright with Chromium (`npx playwright install chromium`)
-
 ## Installation
 
-### Via Git (recommended for development)
+### Via Git
 
 ```bash
 cd /path/to/moodle/mod/book/tool
 git clone https://github.com/astra-openclaw/moodle-booktool_importepub.git importepub
 ```
 
-### Manual
+### Manual Download
 
-1. Download and extract to `mod/book/tool/importepub/`
-2. Visit Site Administration → Notifications to complete installation
+1. Download the ZIP from GitHub
+2. Extract to `mod/book/tool/importepub/`
+3. Visit **Site Administration → Notifications** to complete the install
+
+### Via Moodle Plugin Directory
+
+Not yet listed. Use one of the methods above.
 
 ## Usage
 
-1. Navigate to any Book activity
-2. Click the **Import EPUB** link in the Book administration menu
-3. Upload an EPUB file
+1. Navigate to any Book activity (or create one)
+2. Click **Import EPUB** in the Book administration menu
+3. Upload an `.epub` file
 4. Choose import mode:
-   - **Create new book** — creates a fresh book with the EPUB contents
-   - **Replace existing** — replaces chapters in the current book
+   - **Add chapters** — appends EPUB content to the book
+   - **Replace chapters** — removes existing chapters first
 
-### Fixed-Layout EPUBs with CSS Text Overlays
+The plugin auto-detects EPUB layout:
+- **Reflowable** — imports text content as editable Moodle chapters
+- **Fixed-layout** — imports page images (one image per chapter)
 
-Some publishers (e.g. McGraw-Hill) use a hybrid rendering model where page images contain only graphics and text is rendered via CSS-positioned elements with custom fonts. These EPUBs need pre-processing before import.
+## Advanced: CSS Text Overlay EPUBs
 
-**Pre-render with Playwright:**
+Some publishers (e.g. McGraw-Hill) produce fixed-layout EPUBs where the page image is only the graphical layer and text is rendered via CSS. These need pre-processing before import.
+
+The `cli/` directory contains optional Node.js tools for this:
 
 ```bash
-# Install dependencies (one-time)
+cd cli/
 npm install playwright
 npx playwright install chromium
 
-# Flatten an EPUB (renders all pages to composite JPGs)
+# Pre-render all pages to composite JPGs
 node flatten-epub.js input.epub output-flat.epub --quality 90 --scale 2
 ```
 
-The `--scale 2` flag renders at 2× resolution (1224×1566 for standard 612×783 pages). The flattened EPUB can then be imported normally.
+This is **not required** for standard EPUBs. The tools live outside the Moodle plugin's execution path and have no effect on normal operation.
 
 ## Architecture
 
-The plugin is organized into four core classes:
-
-| Class | Purpose |
-|-------|---------|
-| `epub_parser` | EPUB extraction, OPF/spine/TOC parsing, layout detection |
-| `toc_mapper` | Chapter/subchapter mapping, TOC-to-spine alignment |
-| `reflowable_importer` | TOC-driven chapter splitting, CSS scoping, image/media import |
-| `fixed_layout_importer` | Page image extraction, background detection, popup handling |
+| Class | File | Purpose |
+|-------|------|---------|
+| `epub_parser` | `classes/epub_parser.php` | EPUB extraction, OPF/spine/TOC parsing, layout detection |
+| `toc_mapper` | `classes/toc_mapper.php` | Chapter/subchapter mapping, TOC-to-spine alignment |
+| `reflowable_importer` | `classes/reflowable_importer.php` | TOC-driven chapter splitting, CSS scoping, image import |
+| `fixed_layout_importer` | `classes/fixed_layout_importer.php` | Page image extraction, background detection |
 
 ### Security
 
 - XXE mitigation via `libxml_disable_entity_loader(true)` + `LIBXML_NONET`
-- All file paths validated against the extracted EPUB boundary
+- File paths validated against extracted EPUB boundary
 - HTML sanitized through Moodle's `clean_text()` pipeline
 
-## What's New in 2.0
+## Running Tests
 
-- **Complete rewrite** — modular OOP architecture replacing the monolithic `locallib.php`
-- **Moodle 5.x compatibility** — updated for current Moodle APIs and coding standards
-- **Fixed-layout support** — dedicated importer for page-image EPUBs
-- **CSS text overlay rendering** — Playwright-based pre-processor for hybrid-layout textbooks
-- **Dual import workflow** — create new books or replace existing content
-- **Privacy API** — GDPR-compliant privacy provider
-- **PHPUnit tests** — test coverage for parser and TOC mapper
+```bash
+cd /path/to/moodle
+vendor/bin/phpunit --testsuite booktool_importepub
+```
 
 ## License
 
-GNU GPL v3 or later. See [LICENSE](http://www.gnu.org/copyleft/gpl.html).
+GNU GPL v3 or later — see [LICENSE](LICENSE).
 
 ## Credits
 
 - Original author: Mikael Ylikoski (Ordbrand)
-- Moodle 5.x modernization: Astra (OpenClaw)
+- Moodle 5.x modernization: Robert Q. Watson
