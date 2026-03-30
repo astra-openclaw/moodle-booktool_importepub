@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 // This file is part of Lucimoo
 //
 // This program is free software: you can redistribute it and/or modify
@@ -15,7 +16,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Import EPUB import chapter function.
+ * Import EPUB controller for existing-book and new-book workflows.
  *
  * @package    booktool
  * @subpackage importepub
@@ -23,99 +24,368 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/* This file contains code based on mod/book/tool/print/index.php
- * and mod/book/tool/importhtml/index.php
- * (copyright 2004-2011 Petr Skoda) from Moodle 2.4. */
+use booktool_importepub\epub_parser;
+use booktool_importepub\fixed_layout_importer;
+use booktool_importepub\reflowable_importer;
+use booktool_importepub\toc_mapper;
+// Moodle core classes live in the global namespace — no `use` needed.
+// context_course, context_module, moodle_url, stdClass, stored_file, Throwable
 
-require(dirname(__FILE__).'/../../../../config.php');
+require(__DIR__ . '/../../../../config.php');
+require_once(__DIR__ . '/../../lib.php');
+require_once($CFG->libdir . '/filelib.php');
+require_once($CFG->dirroot . '/course/modlib.php');
+require_once(__DIR__ . '/import_form.php');
 
-$id        = required_param('id', PARAM_INT);           // Course Module ID
-$chapterid = optional_param('chapterid', 0, PARAM_INT); // Chapter ID
+/** @var moodle_database $DB */
+global $DB, $OUTPUT, $PAGE;
 
-// =========================================================================
-// security checks
+const BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING = 'existing';
+const BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK = 'newbook';
+const BOOKTOOL_IMPORTEPUB_MODE_APPEND = 'append';
+const BOOKTOOL_IMPORTEPUB_MODE_REPLACE = 'replace';
 
-$cm = get_coursemodule_from_id('book', $id, 0, false, MUST_EXIST);
-$course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
-$book = $DB->get_record('book', array('id' => $cm->instance), '*', MUST_EXIST);
+$id = optional_param('id', 0, PARAM_INT);
+$courseid = optional_param('courseid', 0, PARAM_INT);
+$sectionnum = optional_param('section', -1, PARAM_INT);
+$workflow = booktool_importepub_normalise_workflow(
+    optional_param(
+        'workflow',
+        $id > 0 ? BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING : BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK,
+        PARAM_ALPHA
+    )
+);
 
-require_course_login($course, true, $cm);
+$book = null;
+$cm = null;
+$course = null;
+$context = null;
+$cancelurl = null;
+$heading = '';
+$formdata = [
+    'workflow' => $workflow,
+    'id' => $id,
+    'courseid' => $courseid,
+    'section' => $sectionnum,
+];
+$pageparams = ['workflow' => $workflow];
 
-$context = context_module::instance($cm->id);
-require_capability('mod/book:edit', $context);
-require_capability('booktool/importepub:import', $context);
-
-// =========================================================================
-
-/*
-if (!(property_exists($USER, 'editing') and $USER->editing)) {
-}
-*/
-
-if ($chapterid) {
-    if (!$chapter = $DB->get_record('book_chapters', array('id' => $chapterid, 'bookid' => $book->id))) {
-        $chapterid = 0;
+if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING) {
+    if ($id <= 0) {
+        print_error('missingparam', 'error', '', 'id');
     }
+
+    $cm = get_coursemodule_from_id('book', $id, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+    $book = $DB->get_record('book', ['id' => $cm->instance], '*', MUST_EXIST);
+    $context = context_module::instance($cm->id);
+
+    require_login($course, false, $cm);
+    require_capability('mod/book:edit', $context);
+    require_capability('booktool/importepub:import', $context);
+
+    $sectionnum = booktool_importepub_resolve_section_number($cm);
+    $courseid = (int)$course->id;
+    $cancelurl = new moodle_url('/mod/book/view.php', ['id' => $cm->id]);
+    $heading = booktool_importepub_local_string('importchapters', 'Import chapters from ebook');
+    $pageparams['id'] = $cm->id;
+    $formdata['courseid'] = $courseid;
+    $formdata['section'] = $sectionnum;
 } else {
-    $chapter = false;
+    if ($id > 0) {
+        $cm = get_coursemodule_from_id('book', $id, 0, false, MUST_EXIST);
+        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+        $context = context_module::instance($cm->id);
+
+        require_login($course, false, $cm);
+        require_capability('mod/book:edit', $context);
+        require_capability('mod/book:addinstance', $context);
+        require_capability('booktool/importepub:import', $context);
+
+        $courseid = (int)$course->id;
+        if ($sectionnum < 0) {
+            $sectionnum = booktool_importepub_resolve_section_number($cm);
+        }
+
+        $cancelurl = new moodle_url('/mod/book/view.php', ['id' => $cm->id]);
+        $pageparams['id'] = $cm->id;
+    } else {
+        if ($courseid <= 0) {
+            print_error('missingparam', 'error', '', 'courseid');
+        }
+
+        $course = $DB->get_record('course', ['id' => $courseid], '*', MUST_EXIST);
+        $coursecontext = context_course::instance($course->id);
+
+        require_login($course);
+        require_capability('mod/book:addinstance', $coursecontext);
+        require_capability('booktool/importepub:import', $coursecontext);
+
+        $context = $coursecontext;
+        if ($sectionnum < 0) {
+            $sectionnum = 0;
+        }
+
+        $cancelurl = new moodle_url('/course/view.php', ['id' => $course->id]);
+        $pageparams['courseid'] = $course->id;
+    }
+
+    $heading = booktool_importepub_local_string('importepub', 'Import ebook as new book');
+    $formdata['courseid'] = (int)$course->id;
+    $formdata['section'] = $sectionnum;
 }
 
-$PAGE->set_url('/mod/book/tool/importepub/index.php',
-               array('id' => $id, 'chapterid' => $chapterid));
-
-require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'locallib.php');
-require_once(dirname(__FILE__) . DIRECTORY_SEPARATOR . 'import_form.php');
-
-$PAGE->set_title($book->name);
+$PAGE->set_url('/mod/book/tool/importepub/index.php', $pageparams + ['section' => $sectionnum]);
 $PAGE->set_heading($course->fullname);
+$PAGE->set_title($heading);
 
-$mform = new booktool_importepub_form(null, array('id' => $id,
-                                                  'chapterid' => $chapterid));
+if ($cm !== null && property_exists($PAGE, 'activityheader') && $PAGE->activityheader !== null) {
+    $PAGE->activityheader->set_attrs([
+        'hidecompletion' => true,
+        'description' => '',
+    ]);
+}
+
+$mform = new booktool_importepub_form(null, $formdata);
 
 if ($mform->is_cancelled()) {
-    if (empty($chapter->id)) {
-        redirect($CFG->wwwroot . "/mod/book/view.php?id=$cm->id");
-    } else {
-        redirect($CFG->wwwroot . "/mod/book/view.php?id=$cm->id&chapterid=$chapter->id");
-    }
-} else if ($data = $mform->get_data()) {
-    echo $OUTPUT->header();
-    echo $OUTPUT->heading(get_string('importchapters', 'booktool_importepub'));
+    redirect($cancelurl);
+}
 
-    $settings = new stdClass();
-    $settings->enablestyles = property_exists($data, 'enablestylesheets');
-    $settings->preventsmallfonts = property_exists($data, 'preventsmallfonts');
-    $settings->ignorefontfamily = property_exists($data, 'ignorefontfamily');
-    $settings->tag = $data->tag;
-    if (strlen($data->classes) > 0) {
-        $settings->classes = preg_split('/\s+/', $data->classes,
-                                        -1, PREG_SPLIT_NO_EMPTY);
-    } else {
-        $settings->classes = array();
+if (($data = $mform->get_data()) !== null) {
+    $redirecturl = null;
+    $redirectmessage = '';
+    $redirecttype = notification::NOTIFY_SUCCESS;
+    $parser = null;
+
+    try {
+        $file = booktool_importepub_get_uploaded_file((int)($data->importfile ?? 0));
+        $parser = new epub_parser($file, make_request_directory());
+        $parser->extract();
+
+        $targetcm = $cm;
+        $targetbook = $book;
+        $targetcontext = $context;
+
+        if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK) {
+            $moduleinfo = booktool_importepub_build_moduleinfo(
+                $parser->get_metadata(),
+                $file,
+                $course,
+                max(0, $sectionnum)
+            );
+            $moduleinfo = add_moduleinfo($moduleinfo, $course);
+
+            $targetcm = get_coursemodule_from_id('book', (int)$moduleinfo->coursemodule, 0, false, MUST_EXIST);
+            $targetbook = $DB->get_record('book', ['id' => $moduleinfo->instance], '*', MUST_EXIST);
+            $targetcontext = context_module::instance($targetcm->id);
+        }
+
+        if ($targetbook === null || $targetcontext === null || $targetcm === null) {
+            throw new moodle_exception('invalidparameter');
+        }
+
+        $mapper = new toc_mapper($parser->get_toc(), $parser->get_spine(), $parser->get_layout());
+
+        if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING
+                && ($data->importmode ?? BOOKTOOL_IMPORTEPUB_MODE_APPEND) === BOOKTOOL_IMPORTEPUB_MODE_REPLACE) {
+            booktool_importepub_reset_book_contents($targetbook, $targetcontext);
+        }
+
+        $importer = $parser->get_layout() === 'fixed'
+            ? new fixed_layout_importer($parser, $mapper, $targetbook, $targetcontext)
+            : new reflowable_importer($parser, $mapper, $targetbook, $targetcontext);
+
+        $chapters = $importer->import();
+        booktool_importepub_bump_revision((int)$targetbook->id);
+
+        $redirecturl = new moodle_url('/mod/book/view.php', ['id' => $targetcm->id]);
+        $redirectmessage = booktool_importepub_build_success_message(
+            count($chapters),
+            $parser->get_layout(),
+            $mapper->get_warnings()
+        );
+    } catch (Throwable $exception) {
+        $redirecturl = $PAGE->url;
+        $redirectmessage = $exception->getMessage();
+        $redirecttype = notification::NOTIFY_ERROR;
+    } finally {
+        if ($parser instanceof epub_parser) {
+            $parser->cleanup();
+        }
     }
-    $settings->header = $data->header;
-    $settings->footer = $data->footer;
+
+    redirect($redirecturl, $redirectmessage, null, $redirecttype);
+}
+
+echo $OUTPUT->header();
+echo $OUTPUT->heading($heading);
+$mform->display();
+echo $OUTPUT->footer();
+
+/**
+ * Normalises the requested workflow to a supported value.
+ *
+ * @param string $workflow Submitted workflow.
+ * @return string
+ */
+function booktool_importepub_normalise_workflow(string $workflow): string {
+    $workflow = strtolower(trim($workflow));
+    if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK) {
+        return BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK;
+    }
+
+    return BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING;
+}
+
+/**
+ * Resolves the course section number for an existing course module.
+ *
+ * @param stdClass $cm Course module record.
+ * @return int
+ */
+function booktool_importepub_resolve_section_number(stdClass $cm): int {
+    global $DB;
+
+    if (empty($cm->section)) {
+        return 0;
+    }
+
+    $sectionnum = $DB->get_field('course_sections', 'section', ['id' => $cm->section]);
+
+    return $sectionnum === false ? 0 : (int)$sectionnum;
+}
+
+/**
+ * Retrieves the uploaded EPUB from the user's draft area.
+ *
+ * @param int $draftitemid Draft item id from the filepicker.
+ * @return stored_file
+ */
+function booktool_importepub_get_uploaded_file(int $draftitemid): stored_file {
+    global $USER;
+
+    if ($draftitemid <= 0) {
+        print_error('required');
+    }
 
     $fs = get_file_storage();
-    $draftid = file_get_submitted_draft_itemid('importfile');
     $usercontext = context_user::instance($USER->id);
-    if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft',
-                                      $draftid, 'id DESC', false)) {
-        redirect($PAGE->url);
+    $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id DESC', false);
+    if ($files === []) {
+        print_error('required');
     }
+
     $file = reset($files);
+    if (!$file instanceof stored_file) {
+        print_error('required');
+    }
 
-    toolbook_importepub_import_epub($file, $book, $context, $settings);
+    return $file;
+}
 
-    echo $OUTPUT->continue_button(new moodle_url('/mod/book/view.php',
-                                                 array('id' => $id)));
-    echo $OUTPUT->footer();
-    die;
-} else {
-    echo $OUTPUT->header();
-    echo $OUTPUT->heading(get_string('importchapters', 'booktool_importepub'));
+/**
+ * Builds the moduleinfo payload used by add_moduleinfo() for a new Book.
+ *
+ * @param object $metadata Parsed EPUB metadata.
+ * @param stored_file $file Uploaded EPUB file.
+ * @param stdClass $course Course record.
+ * @param int $sectionnum Target course section number.
+ * @return stdClass
+ */
+function booktool_importepub_build_moduleinfo(
+    object $metadata,
+    stored_file $file,
+    stdClass $course,
+    int $sectionnum
+): stdClass {
+    global $DB;
 
-    $mform->display();
+    $title = trim((string)($metadata->title ?? ''));
+    if ($title === '') {
+        $title = pathinfo($file->get_filename(), PATHINFO_FILENAME);
+    }
 
-    echo $OUTPUT->footer();
+    if ($title === '') {
+        $title = booktool_importepub_local_string('importepub', 'Import ebook as new book');
+    }
+
+    $moduleinfo = new stdClass();
+    $moduleinfo->modulename = 'book';
+    $moduleinfo->module = $DB->get_field('modules', 'id', ['name' => 'book'], MUST_EXIST);
+    $moduleinfo->course = (int)$course->id;
+    $moduleinfo->section = max(0, $sectionnum);
+    $moduleinfo->visible = 1;
+    $moduleinfo->visibleoncoursepage = 1;
+    $moduleinfo->name = $title;
+    $moduleinfo->intro = '';
+    $moduleinfo->introformat = FORMAT_HTML;
+    $moduleinfo->introeditor = [
+        'text' => '',
+        'format' => FORMAT_HTML,
+        'itemid' => 0,
+    ];
+    $moduleinfo->numbering = defined('BOOK_NUM_NONE') ? BOOK_NUM_NONE : 0;
+    $moduleinfo->customtitles = 0;
+    $moduleinfo->groupmode = 0;
+    $moduleinfo->groupingid = 0;
+
+    return $moduleinfo;
+}
+
+/**
+ * Deletes current chapter rows and stored files before a replace-all import.
+ *
+ * @param stdClass $book Book record to reset.
+ * @param context_module $context Module context for chapter files.
+ */
+function booktool_importepub_reset_book_contents(stdClass $book, context_module $context): void {
+    global $DB;
+
+    $fs = get_file_storage();
+    $chapters = $DB->get_records('book_chapters', ['bookid' => $book->id], '', 'id');
+    foreach ($chapters as $chapter) {
+        $fs->delete_area_files($context->id, 'mod_book', 'chapter', (int)$chapter->id);
+    }
+
+    $DB->delete_records('book_chapters', ['bookid' => $book->id]);
+}
+
+/**
+ * Increments the book revision after the import has changed chapter content.
+ *
+ * @param int $bookid Book instance id.
+ */
+function booktool_importepub_bump_revision(int $bookid): void {
+    global $DB;
+
+    $book = $DB->get_record('book', ['id' => $bookid], 'id, revision', MUST_EXIST);
+    $DB->set_field('book', 'revision', (int)$book->revision + 1, ['id' => $book->id]);
+}
+
+/**
+ * Builds the redirect notification shown after a completed import.
+ *
+ * @param int $chaptercount Number of created chapters.
+ * @param string $layout Detected EPUB layout.
+ * @param array<int, string> $warnings Non-fatal mapper warnings.
+ * @return string
+ */
+function booktool_importepub_build_success_message(int $chaptercount, string $layout, array $warnings): string {
+    $message = "Imported {$chaptercount} chapter";
+    if ($chaptercount !== 1) {
+        $message .= 's';
+    }
+
+    $message .= " from a {$layout} EPUB.";
+    if ($warnings !== []) {
+        $warningcount = count($warnings);
+        $message .= " {$warningcount} mapping warning";
+        if ($warningcount !== 1) {
+            $message .= 's';
+        }
+        $message .= ' were recorded.';
+    }
+
+    return $message;
 }

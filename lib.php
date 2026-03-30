@@ -15,51 +15,38 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Import EPUB library.
+ * Library hooks for the EPUB import book tool.
  *
  * @package    booktool
  * @subpackage importepub
- * @copyright  2013-2014 Mikael Ylikoski
+ * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/* This file contains code based on mod/book/tool/print/lib.php
- * (copyright 2004-2011 Petr Skoda) from Moodle 2.4. */
-
 defined('MOODLE_INTERNAL') || die();
 
-function booktool_importepub_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $booknode) {
-    global $CFG, $PAGE, $USER;
-
-    if ($PAGE->cm->modname !== 'book') {
+/**
+ * Adds the EPUB import action to the book settings navigation.
+ *
+ * @param settings_navigation $settings Settings navigation.
+ * @param navigation_node $node Current navigation node.
+ */
+function booktool_importepub_extend_settings_navigation(settings_navigation $settings, navigation_node $node): void {
+    $page = $settings->get_page();
+    if (empty($page->cm) || empty($page->cm->context)) {
         return;
     }
 
-    $params = $PAGE->url->params();
-    if (empty($params['id']) and empty($params['cmid'])) {
+    if (!has_capability('booktool/importepub:import', $page->cm->context)) {
         return;
     }
 
-    if (empty($PAGE->cm->context)) {
-        $PAGE->cm->context = get_context_module::instance($PAGE->cm->instance);
-    }
-
-    if (!(has_capability('booktool/importepub:import', $PAGE->cm->context) and
-          has_capability('mod/book:edit', $PAGE->cm->context) and
-          property_exists($USER, 'editing') and $USER->editing)) {
-        return;
-    }
-
-    if ($CFG->version >= 2013051000.00 and
-        has_capability('mod/book:addinstance', $PAGE->cm->context)) {
-        $url = new moodle_url('/mod/book/tool/importepub/add.php',
-                              array('id' => $PAGE->cm->id));
-        $booknode->add(get_string('importepub', 'booktool_importepub'),
-                       $url, navigation_node::TYPE_SETTING, null, null, null);
-    }
-
-    $url = new moodle_url('/mod/book/tool/importepub/index.php',
-                          array('id' => $PAGE->cm->id));
-    $booknode->add(get_string('importchapters', 'booktool_importepub'),
-                   $url, navigation_node::TYPE_SETTING, null, null, null);
+    $url = new moodle_url('/mod/book/tool/importepub/index.php', ['id' => $page->cm->id]);
+    $node->add(
+        get_string('importepub', 'booktool_importepub'),
+        $url,
+        navigation_node::TYPE_SETTING,
+        null,
+        'importepub'
+    );
 }

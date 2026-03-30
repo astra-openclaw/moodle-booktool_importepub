@@ -14,23 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Import EPUB language strings.
- *
- * @package    booktool
- * @subpackage importepub
- * @copyright  2014 Lupa
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+namespace booktool_importepub\privacy;
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'Lucimoo importador de ebook';
-$string['importepub:import'] = 'Importar ebook';
-$string['epubfile'] = 'EPUB ebook';
-$string['importepub'] = 'Importar ebook como libro nuevo';
-$string['importchapters'] = 'Importar capítulos desde ebook';
-$string['importurls'] = 'Importar desde URL:s';
-$string['urllist'] = 'Lista de URL:s';
-$string['chaptersasbooks'] = 'Crear un libro por capítulo';
-$string['enablestylesheets'] = 'Habilitar hojas de estilo';
+/**
+ * Privacy provider for the EPUB import tool.
+ *
+ * @package    booktool
+ * @subpackage importepub
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+final class provider implements \core_privacy\local\metadata\null_provider {
+    /**
+     * Returns the reason why this plugin stores no personal data.
+     *
+     * @return string
+     */
+    public static function get_reason(): string {
+        return 'privacy:metadata';
+    }
+}

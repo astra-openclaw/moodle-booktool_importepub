@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Import EPUB version file.
+ * Plugin version details.
  *
  * @package    booktool
  * @subpackage importepub
@@ -25,8 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2018020100;
-$plugin->requires = 2012062500;
 $plugin->component = 'booktool_importepub';
-$plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.1';
+$plugin->version = 2026032900;
+$plugin->requires = 2024100700;
+$plugin->maturity = MATURITY_BETA;
+$plugin->release = '2.0.0-beta1';

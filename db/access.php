@@ -15,24 +15,24 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Import EPUB access file.
+ * Capability definitions for the EPUB import book tool.
  *
  * @package    booktool
  * @subpackage importepub
- * @copyright  2013-2014 Mikael Ylikoski
+ * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
-    'booktool/importepub:import' => array(
+$capabilities = [
+    'booktool/importepub:import' => [
         'riskbitmask' => RISK_XSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => array(
+        'archetypes' => [
             'editingteacher' => CAP_ALLOW,
-            'manager'        => CAP_ALLOW,
-        ),
-    ),
-);
+            'manager' => CAP_ALLOW,
+        ],
+    ],
+];

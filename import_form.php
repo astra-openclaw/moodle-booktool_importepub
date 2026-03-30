@@ -23,137 +23,159 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-/* This file contains code based on mod/book/tool/importhtml/import_form.php
- * (copyright 2004-2011 Petr Skoda) from Moodle 2.4. */
+defined('MOODLE_INTERNAL') || die();
 
-defined('MOODLE_INTERNAL') || die;
+require_once($CFG->libdir . '/formslib.php');
 
-require_once($CFG->libdir . DIRECTORY_SEPARATOR . 'formslib.php');
+/**
+ * Returns a plugin string when available, with an English fallback for staged builds.
+ *
+ * @param string $identifier String identifier.
+ * @param string $fallback English fallback.
+ * @return string
+ */
+function booktool_importepub_local_string(string $identifier, string $fallback): string {
+    $stringmanager = get_string_manager();
+    if ($stringmanager->string_exists($identifier, 'booktool_importepub')) {
+        return get_string($identifier, 'booktool_importepub');
+    }
 
+    return $fallback;
+}
+
+/**
+ * Moodle form for EPUB upload and import mode selection.
+ */
 class booktool_importepub_form extends moodleform {
+    /** @var string Existing-book workflow identifier. */
+    private const WORKFLOW_EXISTING = 'existing';
 
+    /** @var string Append chapter import mode. */
+    private const MODE_APPEND = 'append';
+
+    /** @var string Replace-all chapter import mode. */
+    private const MODE_REPLACE = 'replace';
+
+    /**
+     * Defines the import form fields.
+     */
     public function definition() {
         $mform = $this->_form;
-        $data  = $this->_customdata;
+        $data = $this->_customdata ?? [];
+        $workflow = (string)($data['workflow'] ?? self::WORKFLOW_EXISTING);
 
-        $mform->addElement('header', 'general',
-                           get_string('importchapters', 'booktool_importepub'));
+        $heading = $workflow === self::WORKFLOW_EXISTING
+            ? booktool_importepub_local_string('importchapters', 'Import chapters from ebook')
+            : booktool_importepub_local_string('importepub', 'Import ebook as new book');
 
-        $mform->addElement('filepicker', 'importfile',
-                           get_string('epubfile', 'booktool_importepub'));
-
-        $mform->addElement('header', 'options',
-                           get_string('optionsheader', 'resource'));
-        if (method_exists($mform, 'setExpanded')) {     // Moodle 2.5
-            $mform->setExpanded('options');
-        }
-
-        $mform->addElement('textarea', 'header',
-                           get_string('addheader', 'booktool_importepub'),
-                           'wrap="virtual" rows="2" cols="50"');
-        $mform->setType('header', PARAM_RAW);
-
-        $mform->addElement('textarea', 'footer',
-                           get_string('addfooter', 'booktool_importepub'),
-                           'wrap="virtual" rows="2" cols="50"');
-        $mform->setType('footer', PARAM_RAW);
-            
-        $mform->addElement('header', 'stylesheets',
-                           get_string('stylesheets', 'booktool_importepub'));
-        if (method_exists($mform, 'setExpanded')) {     // Moodle 2.5
-            $mform->setExpanded('stylesheets');
-        }
-
-        $mform->addElement('checkbox', 'enablestylesheets', '',
-                           get_string('enablestylesheets',
-                                      'booktool_importepub'));
-        $mform->setDefault('enablestylesheets', 1);
-
-        $mform->addElement('checkbox', 'preventsmallfonts', '',
-                           get_string('preventsmallfonts',
-                                      'booktool_importepub'));
-
-        $mform->addElement('checkbox', 'ignorefontfamily', '',
-                           get_string('ignorefontfamily',
-                                      'booktool_importepub'));
-
-        $mform->addElement('header', 'divide_options',
-                           get_string('subchapters', 'booktool_importepub'));
-        if (method_exists($mform, 'setExpanded')) {     // Moodle 2.5
-            $mform->setExpanded('divide_options');
-        }
-
-        $radioarray = array();
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              get_string('none',
-                                                         'booktool_importepub'),
-                                              '', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h1&gt;', 'h1', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h2&gt;', 'h2', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h3&gt;', 'h3', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h4&gt;', 'h4', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h5&gt;', 'h5', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;h6&gt;', 'h6', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;section&gt;', 'section', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;div&gt;', 'div', '');
-        $radioarray[] = $mform->createElement('radio', 'tag', '',
-                                              '&lt;p&gt;', 'p', '');
-        $mform->addGroup($radioarray, 'radioar',
-                         get_string('dividetag', 'booktool_importepub'),
-                         array(' '), false);
-
-        $mform->addElement('text', 'classes',
-                           get_string('divideclass', 'booktool_importepub'),
-                           '');
-        $mform->setType('classes', PARAM_NOTAGS);
-
+        $mform->addElement('header', 'general', $heading);
+        $mform->addElement(
+            'filepicker',
+            'importfile',
+            booktool_importepub_local_string('epubfile', 'EPUB ebook'),
+            null,
+            ['accepted_types' => ['.epub']]
+        );
         $mform->addRule('importfile', null, 'required');
+
+        if ($workflow === self::WORKFLOW_EXISTING) {
+            $mform->addElement(
+                'select',
+                'importmode',
+                booktool_importepub_local_string('importmode', 'Import mode'),
+                [
+                    self::MODE_APPEND => booktool_importepub_local_string(
+                        'importmodeappend',
+                        'Add chapters to this book'
+                    ),
+                    self::MODE_REPLACE => booktool_importepub_local_string(
+                        'importmodereplace',
+                        'Replace all chapters'
+                    ),
+                ]
+            );
+            $mform->setDefault('importmode', self::MODE_APPEND);
+
+            $mform->addElement(
+                'advcheckbox',
+                'confirmreplace',
+                '',
+                booktool_importepub_local_string(
+                    'confirmreplace',
+                    'I understand that replacing will delete the current chapters before import.'
+                )
+            );
+            $mform->disabledIf('confirmreplace', 'importmode', 'neq', self::MODE_REPLACE);
+        } else {
+            $mform->addElement('hidden', 'importmode', self::MODE_APPEND);
+            $mform->setType('importmode', PARAM_ALPHA);
+        }
+
+        $mform->addElement('hidden', 'workflow');
+        $mform->setType('workflow', PARAM_ALPHA);
 
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);
 
-        $mform->addElement('hidden', 'chapterid');
-        $mform->setType('chapterid', PARAM_INT);
+        $mform->addElement('hidden', 'courseid');
+        $mform->setType('courseid', PARAM_INT);
+
+        $mform->addElement('hidden', 'section');
+        $mform->setType('section', PARAM_INT);
 
         $this->add_action_buttons(true, get_string('import'));
-
         $this->set_data($data);
     }
 
+    /**
+     * Validates the uploaded draft EPUB.
+     *
+     * @param array $data Submitted form data.
+     * @param array $files Uploaded file array.
+     * @return array<string, string>
+     */
     public function validation($data, $files) {
         global $USER;
 
-        if ($errors = parent::validation($data, $files)) {
+        $errors = parent::validation($data, $files);
+        if ($errors) {
             return $errors;
         }
 
-        $usercontext = context_user::instance($USER->id);
-        $fs = get_file_storage();
-
-        if (!$files = $fs->get_area_files($usercontext->id, 'user', 'draft',
-                                          $data['importfile'], 'id', false)) {
+        $draftitemid = (int)($data['importfile'] ?? 0);
+        if ($draftitemid <= 0) {
             $errors['importfile'] = get_string('required');
             return $errors;
-        } else {
-            $file = reset($files);
-            $mimetype = $file->get_mimetype();
-            if ($mimetype != 'application/epub+zip' and
-                $mimetype != 'application/zip' and
-                $mimetype != 'document/unknown' and
-                $mimetype != null) {
-                $errors['importfile'] = get_string('invalidfiletype', 'error',
-                                                   $file->get_filename());
-                $fs->delete_area_files($usercontext->id, 'user', 'draft',
-                                       $data['importfile']);
-            }
+        }
+
+        $fs = get_file_storage();
+        $usercontext = context_user::instance($USER->id);
+        $draftfiles = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id DESC', false);
+        if ($draftfiles === []) {
+            $errors['importfile'] = get_string('required');
+            return $errors;
+        }
+
+        $file = reset($draftfiles);
+        $filename = (string)$file->get_filename();
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $mimetype = (string)$file->get_mimetype();
+
+        if ($extension !== 'epub') {
+            $errors['importfile'] = get_string('invalidfiletype', 'error', $filename);
+            $fs->delete_area_files($usercontext->id, 'user', 'draft', $draftitemid);
+        } else if ($mimetype !== 'application/epub+zip' && $mimetype !== 'application/zip') {
+            $errors['importfile'] = get_string('invalidfiletype', 'error', $filename);
+            $fs->delete_area_files($usercontext->id, 'user', 'draft', $draftitemid);
+        }
+
+        if (($data['workflow'] ?? self::WORKFLOW_EXISTING) === self::WORKFLOW_EXISTING
+                && ($data['importmode'] ?? self::MODE_APPEND) === self::MODE_REPLACE
+                && empty($data['confirmreplace'])) {
+            $errors['confirmreplace'] = booktool_importepub_local_string(
+                'confirmreplaceerror',
+                'Confirm replacement before deleting the current chapters.'
+            );
         }
 
         return $errors;

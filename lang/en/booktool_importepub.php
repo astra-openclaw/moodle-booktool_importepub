@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Import EPUB language strings.
+ * English language strings for the EPUB import book tool.
  *
  * @package    booktool
  * @subpackage importepub
@@ -25,21 +25,24 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['pluginname'] = 'Lucimoo ebook import';
-$string['importepub:import'] = 'Import ebook';
-$string['epubfile'] = 'EPUB ebook';
-$string['importepub'] = 'Import ebook as new book';
+$string['pluginname'] = 'EPUB import';
+$string['importepub'] = 'Import from EPUB';
 $string['importchapters'] = 'Import chapters from ebook';
-$string['importurls'] = 'Import from URLs';
-$string['urllist'] = 'URL list';
-$string['chaptersasbooks'] = 'Create one book per chapter';
-$string['stylesheets'] = 'Stylesheets';
-$string['enablestylesheets'] = 'Enable stylesheets';
-$string['preventsmallfonts'] = 'Prevent small text';
-$string['ignorefontfamily'] = 'Ignore font family';
-$string['addheader'] = 'Add header';
-$string['addfooter'] = 'Add footer';
-$string['subchapters'] = 'Subchapters';
-$string['dividetag'] = 'Divide on tag';
-$string['divideclass'] = 'Divide on class';
-$string['none'] = 'None';
+$string['importing'] = 'Importing';
+$string['importingchapters'] = 'Importing chapters from EPUB';
+$string['chaptersimported'] = '{$a} chapters imported successfully';
+$string['epubfile'] = 'EPUB file';
+$string['epubfile_help'] = 'Upload an EPUB file (.epub) to import as book chapters.';
+$string['importmode'] = 'Import mode';
+$string['importmodeappend'] = 'Add chapters to this book';
+$string['importmode_add'] = 'Add chapters to existing book';
+$string['importmodereplace'] = 'Replace all chapters';
+$string['importmode_replace'] = 'Replace all existing chapters';
+$string['confirmreplace'] = 'I understand that replacing will delete the current chapters before import.';
+$string['confirmreplaceerror'] = 'Confirm replacement before deleting the current chapters.';
+$string['privacy:metadata'] = 'The EPUB import plugin does not store any personal data.';
+$string['error:invalidepub'] = 'Invalid EPUB file. Please upload a valid .epub file.';
+$string['error:notoc'] = 'No table of contents found in EPUB.';
+$string['error:emptyepub'] = 'The EPUB file appears to be empty.';
+$string['fixedlayout'] = 'Fixed layout EPUB detected; importing page images.';
+$string['reflowable'] = 'Reflowable EPUB detected; importing text content.';
