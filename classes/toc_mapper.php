@@ -1,24 +1,37 @@
 <?php
+// This file is part of Lucimoo
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace booktool_epubimport;
 
 use InvalidArgumentException;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Maps EPUB TOC entries onto Moodle Book chapters and subchapters.
+ *
+ * @package    booktool_epubimport
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class toc_mapper {
-    /**
-     * @var array<int, array{title: string, href: string, level: int, children: array}>
-     */
+    /** @var array<int, array<string, mixed>> Parsed TOC entries. */
     private array $toc;
 
-    /**
-     * @var array<int, array{id: string, href: string, media_type: string}>
-     */
+    /** @var array<int, array<string, string>> Parsed OPF spine items. */
     private array $spine;
 
     /** @var string EPUB layout mode ('fixed' or 'reflowable'). */
@@ -33,24 +46,14 @@ final class toc_mapper {
     /** @var array<int, string> Non-fatal mapping warnings. */
     private array $warnings = [];
 
-    /**
-     * @var array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }>|null
-     */
+    /** @var array<int, array<string, mixed>>|null Cached chapter plan entries. */
     private ?array $chapterplan = null;
 
     /**
      * Constructor.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $toc
-     * @param array<int, array{id: string, href: string, media_type: string}> $spine
+     * @param array<int, array<string, mixed>> $toc Parsed TOC entries.
+     * @param array<int, array<string, string>> $spine Parsed OPF spine items.
      * @param string $layout EPUB layout mode ('fixed' or 'reflowable').
      */
     public function __construct(array $toc, array $spine, string $layout) {
@@ -69,15 +72,7 @@ final class toc_mapper {
     /**
      * Returns the flat Moodle Book chapter/subchapter plan.
      *
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }>
+     * @return array<int, array<string, mixed>> Chapter plan entries.
      */
     public function get_chapter_plan(): array {
         if ($this->chapterplan !== null) {
@@ -116,15 +111,7 @@ final class toc_mapper {
     /**
      * Builds one chapter per spine entry when the EPUB has no usable TOC.
      *
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }>
+     * @return array<int, array<string, mixed>> Chapter plan entries.
      */
     private function build_spine_fallback_plan(): array {
         $plan = [];
@@ -147,15 +134,7 @@ final class toc_mapper {
     /**
      * Builds chapter mappings when the TOC has only a single level.
      *
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }>
+     * @return array<int, array<string, mixed>> Chapter plan entries.
      */
     private function build_single_level_plan(): array {
         $entries = $this->flatten_entries($this->toc);
@@ -183,7 +162,7 @@ final class toc_mapper {
         usort($plan, [$this, 'compare_plan_entries']);
 
         return array_map(
-            static function(array $entry): array {
+            static function (array $entry): array {
                 unset($entry['_sequence']);
                 return $entry;
             },
@@ -194,15 +173,7 @@ final class toc_mapper {
     /**
      * Builds chapter mappings from a hierarchical TOC.
      *
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }>
+     * @return array<int, array<string, mixed>> Chapter plan entries.
      */
     private function build_hierarchical_plan(): array {
         $plan = [];
@@ -211,7 +182,7 @@ final class toc_mapper {
         usort($plan, [$this, 'compare_plan_entries']);
 
         return array_map(
-            static function(array $entry): array {
+            static function (array $entry): array {
                 unset($entry['_sequence']);
                 return $entry;
             },
@@ -222,7 +193,7 @@ final class toc_mapper {
     /**
      * Recursively collects TOC entries that should become chapters or subchapters.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $entries
+     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
      * @param int $parentend Exclusive parent spine boundary.
      * @param array<int, array<string, mixed>> $plan
      */
@@ -274,7 +245,7 @@ final class toc_mapper {
     /**
      * Finds the exclusive spine boundary for an entry within its sibling list.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $entries
+     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
      * @param int $currentindex Index of the current entry in the sibling list.
      * @param int $fallbackend Parent boundary if there is no later sibling boundary.
      * @return int
@@ -377,16 +348,7 @@ final class toc_mapper {
     /**
      * Creates a final chapter plan entry.
      *
-     * @return array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int,
-     *     _sequence?: int
-     * }
+     * @return array Final chapter plan entry.
      */
     private function create_plan_entry(
         string $title,
@@ -437,8 +399,8 @@ final class toc_mapper {
     /**
      * Flattens a TOC tree into a single ordered list.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $entries
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
+     * @return array<int, array<string, mixed>> Nested TOC entries.
      */
     private function flatten_entries(array $entries): array {
         $flattened = [];
@@ -458,7 +420,7 @@ final class toc_mapper {
     /**
      * Returns the maximum TOC level present in a TOC tree.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $entries
+     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
      * @return int
      */
     private function max_toc_level(array $entries): int {
@@ -520,7 +482,8 @@ final class toc_mapper {
     private function warn_missing_spine_href(array $entry): void {
         $href = $this->entry_href($entry);
         $label = $this->entry_title($entry);
-        $message = 'Skipping TOC entry "' . ($label !== '' ? $label : '[untitled]') . '" because its href was not found in the spine';
+        $message = 'Skipping TOC entry "' . ($label !== '' ? $label : '[untitled]')
+            . '" because its href was not found in the spine';
 
         if ($href !== '') {
             $message .= ': ' . $href;
@@ -546,7 +509,7 @@ final class toc_mapper {
      * Splits a href into path and fragment components.
      *
      * @param string $href Href to split.
-     * @return array{0: string, 1: string}
+     * @return array Path and fragment components.
      */
     private function split_fragment(string $href): array {
         $parts = explode('#', $href, 2);
@@ -636,7 +599,7 @@ final class toc_mapper {
     /**
      * Returns TOC children for an entry.
      *
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Nested TOC entries.
      */
     private function entry_children(array $entry): array {
         return isset($entry['children']) && is_array($entry['children']) ? array_values($entry['children']) : [];

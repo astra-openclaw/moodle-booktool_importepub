@@ -1,4 +1,19 @@
 <?php
+// This file is part of Lucimoo
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace booktool_epubimport;
@@ -14,10 +29,12 @@ use stdClass;
 use stored_file;
 use ZipArchive;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Extracts and parses EPUB package metadata, spine, and table of contents.
+ *
+ * @package    booktool_epubimport
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class epub_parser {
     /** @var int XML parsing flags mandated for this parser. */
@@ -47,9 +64,7 @@ final class epub_parser {
     /** @var DOMXPath|null XPath helper for the OPF document. */
     private ?DOMXPath $opfxpath = null;
 
-    /**
-     * @var array<string, array{href: string, media_type: string, properties: string}>
-     */
+    /** @var array<string, array<string, string>> OPF manifest items keyed by id. */
     private array $manifest = [];
 
     /** @var string|null EPUB3 navigation document href relative to the OPF directory. */
@@ -158,7 +173,7 @@ final class epub_parser {
     /**
      * Returns the ordered OPF spine.
      *
-     * @return array<int, array{id: string, href: string, media_type: string}>
+     * @return array<int, array<string, string>> Ordered OPF spine items.
      */
     public function get_spine(): array {
         $this->require_extracted();
@@ -194,7 +209,7 @@ final class epub_parser {
     /**
      * Returns the hierarchical table of contents.
      *
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Hierarchical TOC entries.
      */
     public function get_toc(): array {
         $this->require_extracted();
@@ -237,11 +252,18 @@ final class epub_parser {
      * Ensures the extraction directory exists and is empty.
      */
     private function prepare_tempdir(): void {
+        global $CFG;
+
         if (file_exists($this->tempdir) && !is_dir($this->tempdir)) {
             throw new RuntimeException('Temporary extraction path exists and is not a directory.');
         }
 
-        if (!is_dir($this->tempdir) && !mkdir($this->tempdir, 0777, true) && !is_dir($this->tempdir)) {
+        $permissions = $CFG->directorypermissions ?? 02777;
+        if (is_string($permissions)) {
+            $permissions = octdec($permissions);
+        }
+
+        if (!is_dir($this->tempdir) && !mkdir($this->tempdir, $permissions, true) && !is_dir($this->tempdir)) {
             throw new RuntimeException('Unable to create temporary extraction directory.');
         }
 
@@ -352,12 +374,12 @@ final class epub_parser {
             }
 
             $href = $this->normalise_path(trim($item->getAttribute('href')));
-            $media_type = trim($item->getAttribute('media-type'));
+            $mediatype = trim($item->getAttribute('media-type'));
             $properties = trim($item->getAttribute('properties'));
 
             $this->manifest[$id] = [
                 'href' => $href,
-                'media_type' => $media_type,
+                'media_type' => $mediatype,
                 'properties' => $properties,
             ];
 
@@ -365,7 +387,7 @@ final class epub_parser {
                 $this->navhref = $href;
             }
 
-            if ($media_type === 'application/x-dtbncx+xml' || ($tocid !== '' && $tocid === $id)) {
+            if ($mediatype === 'application/x-dtbncx+xml' || ($tocid !== '' && $tocid === $id)) {
                 $this->ncxhref = $href;
             }
         }
@@ -375,7 +397,7 @@ final class epub_parser {
      * Parses an EPUB3 navigation document.
      *
      * @param string $navhref Navigation document href relative to the OPF directory.
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Hierarchical TOC entries.
      */
     private function parse_nav_document(string $navhref): array {
         $filepath = $this->full_path_from_opf($navhref);
@@ -409,7 +431,7 @@ final class epub_parser {
      * Parses an EPUB2 NCX table of contents document.
      *
      * @param string $ncxhref NCX document href relative to the OPF directory.
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Hierarchical TOC entries.
      */
     private function parse_ncx_document(string $ncxhref): array {
         $filepath = $this->full_path_from_opf($ncxhref);
@@ -436,7 +458,7 @@ final class epub_parser {
      * @param DOMElement $list List element to parse.
      * @param int $level Current TOC depth, starting at 1.
      * @param string $basehref Source file href relative to the OPF directory.
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Hierarchical TOC entries.
      */
     private function parse_nav_list(DOMXPath $xpath, DOMElement $list, int $level, string $basehref): array {
         $entries = [];
@@ -494,7 +516,7 @@ final class epub_parser {
      * @param DOMElement $parent Current navMap or navPoint element.
      * @param int $level Current TOC depth, starting at 1.
      * @param string $basehref Source NCX href relative to the OPF directory.
-     * @return array<int, array{title: string, href: string, level: int, children: array}>
+     * @return array<int, array<string, mixed>> Hierarchical TOC entries.
      */
     private function parse_ncx_points(DOMXPath $xpath, DOMElement $parent, int $level, string $basehref): array {
         $entries = [];
@@ -552,7 +574,7 @@ final class epub_parser {
         $previousloader = null;
 
         if (PHP_VERSION_ID < 80000) {
-            $previousloader = libxml_disable_entity_loader(true);
+            $previousloader = self::disable_xml_entity_loader(true);
         }
 
         $document = new DOMDocument();
@@ -562,7 +584,7 @@ final class epub_parser {
         libxml_use_internal_errors($previouserrors);
 
         if (PHP_VERSION_ID < 80000 && $previousloader !== null) {
-            libxml_disable_entity_loader($previousloader);
+            self::disable_xml_entity_loader($previousloader);
         }
 
         if (!$loaded) {
@@ -575,6 +597,23 @@ final class epub_parser {
         }
 
         return $document;
+    }
+
+    /**
+     * Disables libxml entity loading on legacy libxml releases only.
+     *
+     * @param bool $disable Whether entity loading should be disabled.
+     * @return bool Previous entity-loader state for legacy libxml versions.
+     */
+    private static function disable_xml_entity_loader(bool $disable): bool {
+        if (LIBXML_VERSION >= 20900) {
+            return true;
+        }
+
+        // @codeCoverageIgnoreStart
+        // phpcs:ignore moodle.PHP.DeprecatedFunctions.Deprecated -- Needed only for legacy libxml behaviour.
+        return libxml_disable_entity_loader($disable);
+        // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -712,7 +751,7 @@ final class epub_parser {
      * Splits a href into path and fragment components.
      *
      * @param string $href Href to split.
-     * @return array{0: string, 1: string}
+     * @return array Path and fragment components.
      */
     private function split_fragment(string $href): array {
         $parts = explode('#', $href, 2);

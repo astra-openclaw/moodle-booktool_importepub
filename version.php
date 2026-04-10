@@ -17,8 +17,7 @@
 /**
  * Plugin version details.
  *
- * @package    booktool
- * @subpackage epubimport
+ * @package    booktool_epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */

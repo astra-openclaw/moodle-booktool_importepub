@@ -18,6 +18,7 @@ npx playwright install chromium
 Takes an EPUB with CSS text overlays and produces a new EPUB where each page is a fully-rendered composite image (background + text + fonts).
 
 ```bash
+npm run check
 node flatten-epub.js input.epub [output.epub] [--quality 90] [--concurrency 4] [--scale 2]
 ```
 
@@ -29,3 +30,7 @@ node flatten-epub.js input.epub [output.epub] [--quality 90] [--concurrency 4] [
 ### render-pages.js
 
 Lower-level tool that renders individual XHTML pages to JPGs. Used internally by `flatten-epub.js`.
+
+```bash
+node render-pages.js ./path/to/extracted-epub [--quality 90] [--concurrency 4] [--scale 2]
+```

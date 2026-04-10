@@ -1,5 +1,4 @@
 <?php
-declare(strict_types=1);
 // This file is part of Lucimoo
 //
 // This program is free software: you can redistribute it and/or modify
@@ -18,18 +17,18 @@ declare(strict_types=1);
 /**
  * Import EPUB controller for existing-book and new-book workflows.
  *
- * @package    booktool
- * @subpackage epubimport
+ * @package    booktool_epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+declare(strict_types=1);
 
 use booktool_epubimport\epub_parser;
 use booktool_epubimport\fixed_layout_importer;
 use booktool_epubimport\reflowable_importer;
 use booktool_epubimport\toc_mapper;
-// Moodle core classes live in the global namespace — no `use` needed.
-// context_course, context_module, moodle_url, stdClass, stored_file, Throwable
+// Moodle core classes live in the global namespace; no use statements are needed for
+// context_course, context_module, moodle_url, stdClass, stored_file, or Throwable.
 
 require(__DIR__ . '/../../../../config.php');
 require_once(__DIR__ . '/../../lib.php');
@@ -37,12 +36,15 @@ require_once($CFG->libdir . '/filelib.php');
 require_once($CFG->dirroot . '/course/modlib.php');
 require_once(__DIR__ . '/import_form.php');
 
-/** @var moodle_database $DB */
 global $DB, $OUTPUT, $PAGE;
 
+/** Existing-book import workflow identifier. */
 const BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING = 'existing';
+/** New-book import workflow identifier. */
 const BOOKTOOL_IMPORTEPUB_WORKFLOW_NEWBOOK = 'newbook';
+/** Append import mode identifier. */
 const BOOKTOOL_IMPORTEPUB_MODE_APPEND = 'append';
+/** Replace import mode identifier. */
 const BOOKTOOL_IMPORTEPUB_MODE_REPLACE = 'replace';
 
 $id = optional_param('id', 0, PARAM_INT);
@@ -87,7 +89,7 @@ if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING) {
     $sectionnum = booktool_epubimport_resolve_section_number($cm);
     $courseid = (int)$course->id;
     $cancelurl = new moodle_url('/mod/book/view.php', ['id' => $cm->id]);
-    $heading = booktool_epubimport_local_string('importchapters', 'Import chapters from ebook');
+    $heading = get_string('importchapters', 'booktool_epubimport');
     $pageparams['id'] = $cm->id;
     $formdata['courseid'] = $courseid;
     $formdata['section'] = $sectionnum;
@@ -130,7 +132,7 @@ if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING) {
         $pageparams['courseid'] = $course->id;
     }
 
-    $heading = booktool_epubimport_local_string('importepub', 'Import ebook as new book');
+    $heading = get_string('importnewbook', 'booktool_epubimport');
     $formdata['courseid'] = (int)$course->id;
     $formdata['section'] = $sectionnum;
 }
@@ -187,8 +189,10 @@ if (($data = $mform->get_data()) !== null) {
 
         $mapper = new toc_mapper($parser->get_toc(), $parser->get_spine(), $parser->get_layout());
 
-        if ($workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING
-                && ($data->importmode ?? BOOKTOOL_IMPORTEPUB_MODE_APPEND) === BOOKTOOL_IMPORTEPUB_MODE_REPLACE) {
+        if (
+            $workflow === BOOKTOOL_IMPORTEPUB_WORKFLOW_EXISTING
+                && ($data->importmode ?? BOOKTOOL_IMPORTEPUB_MODE_APPEND) === BOOKTOOL_IMPORTEPUB_MODE_REPLACE
+        ) {
             booktool_epubimport_reset_book_contents($targetbook, $targetcontext);
         }
 
@@ -197,6 +201,10 @@ if (($data = $mform->get_data()) !== null) {
             : new reflowable_importer($parser, $mapper, $targetbook, $targetcontext);
 
         $chapters = $importer->import();
+        if ($chapters === []) {
+            throw new moodle_exception('error:emptyepub', 'booktool_epubimport');
+        }
+
         booktool_epubimport_bump_revision((int)$targetbook->id);
 
         $redirecturl = new moodle_url('/mod/book/view.php', ['id' => $targetcm->id]);
@@ -207,7 +215,7 @@ if (($data = $mform->get_data()) !== null) {
         );
     } catch (Throwable $exception) {
         $redirecturl = $PAGE->url;
-        $redirectmessage = $exception->getMessage();
+        $redirectmessage = booktool_epubimport_build_error_message($exception);
         $redirecttype = notification::NOTIFY_ERROR;
     } finally {
         if ($parser instanceof epub_parser) {
@@ -307,7 +315,7 @@ function booktool_epubimport_build_moduleinfo(
     }
 
     if ($title === '') {
-        $title = booktool_epubimport_local_string('importepub', 'Import ebook as new book');
+        $title = get_string('importnewbook', 'booktool_epubimport');
     }
 
     $moduleinfo = new stdClass();
@@ -372,20 +380,76 @@ function booktool_epubimport_bump_revision(int $bookid): void {
  * @return string
  */
 function booktool_epubimport_build_success_message(int $chaptercount, string $layout, array $warnings): string {
-    $message = "Imported {$chaptercount} chapter";
-    if ($chaptercount !== 1) {
-        $message .= 's';
-    }
+    $messageargs = (object) [
+        'count' => $chaptercount,
+        'layout' => booktool_epubimport_get_layout_label($layout),
+    ];
+    $message = $chaptercount === 1
+        ? get_string('importsuccesssingle', 'booktool_epubimport', $messageargs)
+        : get_string('importsuccessplural', 'booktool_epubimport', $messageargs);
 
-    $message .= " from a {$layout} EPUB.";
     if ($warnings !== []) {
         $warningcount = count($warnings);
-        $message .= " {$warningcount} mapping warning";
-        if ($warningcount !== 1) {
-            $message .= 's';
-        }
-        $message .= ' were recorded.';
+        $message .= ' ' . ($warningcount === 1
+            ? get_string('mappingwarningssingle', 'booktool_epubimport')
+            : get_string('mappingwarningsplural', 'booktool_epubimport', $warningcount));
     }
 
     return $message;
+}
+
+/**
+ * Returns the localised label for a parser layout key.
+ *
+ * @param string $layout Parser layout key.
+ * @return string
+ */
+function booktool_epubimport_get_layout_label(string $layout): string {
+    if ($layout === 'fixed') {
+        return get_string('layoutfixed', 'booktool_epubimport');
+    }
+
+    if ($layout === 'reflowable') {
+        return get_string('layoutreflowable', 'booktool_epubimport');
+    }
+
+    return $layout;
+}
+
+/**
+ * Builds a localised import error message for display in the UI.
+ *
+ * @param Throwable $exception Import exception.
+ * @return string
+ */
+function booktool_epubimport_build_error_message(Throwable $exception): string {
+    if ($exception instanceof moodle_exception) {
+        return $exception->getMessage();
+    }
+
+    $message = trim($exception->getMessage());
+    if ($message === '') {
+        return get_string('error:importfailed', 'booktool_epubimport');
+    }
+
+    if (
+        str_starts_with($message, 'Invalid EPUB:')
+            || in_array($message, [
+                'Unable to copy EPUB content into the temporary directory.',
+                'Unable to open EPUB archive for extraction.',
+                'Unable to extract EPUB archive into the temporary directory.',
+            ], true)
+    ) {
+        return get_string('error:invalidepub', 'booktool_epubimport');
+    }
+
+    if (
+        str_starts_with($message, 'Fixed-layout page renderer not found at:')
+            || str_starts_with($message, 'Fixed-layout page pre-rendering failed')
+            || str_starts_with($message, 'Page pre-rendering produced no output:')
+    ) {
+        return get_string('error:fixedlayoutrender', 'booktool_epubimport');
+    }
+
+    return get_string('error:importfailed', 'booktool_epubimport');
 }

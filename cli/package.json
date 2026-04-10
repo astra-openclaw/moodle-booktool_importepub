@@ -1,0 +1,9 @@
+{
+  "name": "@lucimoo/booktool-epubimport-cli",
+  "description": "Local helper scripts for fixed-layout EPUB preprocessing",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check flatten-epub.js && node --check render-pages.js"
+  }
+}

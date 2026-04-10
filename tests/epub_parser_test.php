@@ -1,14 +1,33 @@
 <?php
+// This file is part of Lucimoo
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 use booktool_epubimport\epub_parser;
-
-defined('MOODLE_INTERNAL') || die();
+use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
  * PHPUnit coverage for the EPUB parser.
+ *
+ * @package    booktool_epubimport
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-final class booktool_epubimport_epub_parser_test extends advanced_testcase {
+#[CoversClass(epub_parser::class)]
+final class epub_parser_test extends advanced_testcase {
     protected function setUp(): void {
         parent::setUp();
         $this->resetAfterTest(true);
@@ -162,10 +181,22 @@ final class booktool_epubimport_epub_parser_test extends advanced_testcase {
         $this->assertFalse(file_exists($tempdir));
     }
 
+    /**
+     * Creates a parser using a bundled fixture EPUB.
+     *
+     * @param string $filename Fixture filename.
+     * @return epub_parser
+     */
     private function create_parser_from_fixture(string $filename): epub_parser {
         return $this->create_parser_from_path($this->fixture_path($filename));
     }
 
+    /**
+     * Creates a parser using a file path stored in Moodle file storage.
+     *
+     * @param string $pathname Source path to import.
+     * @return epub_parser
+     */
     private function create_parser_from_path(string $pathname): epub_parser {
         $storedfile = $this->create_stored_file($pathname);
         $tempdir = $this->make_extraction_dir();
@@ -173,6 +204,12 @@ final class booktool_epubimport_epub_parser_test extends advanced_testcase {
         return new epub_parser($storedfile, $tempdir);
     }
 
+    /**
+     * Stores a test file in Moodle's file API.
+     *
+     * @param string $pathname Source path to persist.
+     * @return stored_file
+     */
     private function create_stored_file(string $pathname): stored_file {
         $fs = get_file_storage();
         $record = [
@@ -187,13 +224,25 @@ final class booktool_epubimport_epub_parser_test extends advanced_testcase {
         return $fs->create_file_from_pathname($record, $pathname);
     }
 
+    /**
+     * Creates a unique extraction directory path for parser tests.
+     *
+     * @return string
+     */
     private function make_extraction_dir(): string {
         return make_request_directory() . DIRECTORY_SEPARATOR . 'epub-parser-' . uniqid('', true);
     }
 
+    /**
+     * Writes a temporary file into the request directory.
+     *
+     * @param string $filename Basename for the generated file.
+     * @param string $contents File contents.
+     * @return string
+     */
     private function create_temp_file(string $filename, string $contents): string {
         $directory = make_request_directory() . DIRECTORY_SEPARATOR . 'fixtures-' . uniqid('', true);
-        mkdir($directory, 0777, true);
+        mkdir($directory, 0700, true);
 
         $pathname = $directory . DIRECTORY_SEPARATOR . $filename;
         file_put_contents($pathname, $contents);
@@ -201,6 +250,11 @@ final class booktool_epubimport_epub_parser_test extends advanced_testcase {
         return $pathname;
     }
 
+    /**
+     * Builds an EPUB2 fixture archive for legacy TOC coverage.
+     *
+     * @return string
+     */
     private function create_epub2_fixture(): string {
         $files = [
             'mimetype' => 'application/epub+zip',
@@ -211,7 +265,8 @@ final class booktool_epubimport_epub_parser_test extends advanced_testcase {
     <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>
-XML,
+XML
+,
             'OEBPS/content.opf' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <package version="2.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="bookid">
@@ -231,7 +286,8 @@ XML,
     <itemref idref="chapter2"/>
   </spine>
 </package>
-XML,
+XML
+,
             'OEBPS/toc.ncx' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
@@ -256,26 +312,35 @@ XML,
     </navPoint>
   </navMap>
 </ncx>
-XML,
+XML
+,
             'OEBPS/text/chapter1.xhtml' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head><title>Chapter 1</title></head>
   <body><h1>Chapter 1</h1></body>
 </html>
-XML,
+XML
+,
             'OEBPS/text/chapter2.xhtml' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head><title>Chapter 2</title></head>
   <body><h1>Chapter 2</h1><h2 id="section-1">Section 1</h2></body>
 </html>
-XML,
+XML
+,
         ];
 
         return $this->create_epub_archive('test-epub2.epub', $files);
     }
 
+    /**
+     * Builds an EPUB fixture that attempts XXE expansion.
+     *
+     * @param string $secretpath Path to the secret file used in the XXE payload.
+     * @return string
+     */
     private function create_xxe_epub(string $secretpath): string {
         $secreturi = 'file://' . str_replace(DIRECTORY_SEPARATOR, '/', $secretpath);
         $files = [
@@ -287,7 +352,8 @@ XML,
     <rootfile full-path="OEBPS/package.opf" media-type="application/oebps-package+xml"/>
   </rootfiles>
 </container>
-XML,
+XML
+,
             'OEBPS/package.opf' => <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE package [
@@ -308,7 +374,8 @@ XML,
     <itemref idref="chapter1"/>
   </spine>
 </package>
-XML,
+XML
+,
             'OEBPS/nav.xhtml' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
@@ -321,22 +388,31 @@ XML,
     </nav>
   </body>
 </html>
-XML,
+XML
+,
             'OEBPS/text/chapter1.xhtml' => <<<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head><title>Chapter 1</title></head>
   <body><h1>Chapter 1</h1></body>
 </html>
-XML,
+XML
+,
         ];
 
         return $this->create_epub_archive('test-xxe.epub', $files);
     }
 
+    /**
+     * Creates a ZIP archive from a map of EPUB file contents.
+     *
+     * @param string $filename Output EPUB filename.
+     * @param array<string, string> $files Archive members keyed by path.
+     * @return string
+     */
     private function create_epub_archive(string $filename, array $files): string {
         $directory = make_request_directory() . DIRECTORY_SEPARATOR . 'generated-epubs-' . uniqid('', true);
-        mkdir($directory, 0777, true);
+        mkdir($directory, 0700, true);
 
         $pathname = $directory . DIRECTORY_SEPARATOR . $filename;
         $zip = new ZipArchive();
@@ -352,6 +428,12 @@ XML,
         return $pathname;
     }
 
+    /**
+     * Returns the full path to a bundled test fixture.
+     *
+     * @param string $filename Fixture filename.
+     * @return string
+     */
     private function fixture_path(string $filename): string {
         return __DIR__ . '/fixtures/' . $filename;
     }

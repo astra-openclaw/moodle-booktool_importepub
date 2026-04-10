@@ -17,13 +17,10 @@
 /**
  * Library hooks for the EPUB import book tool.
  *
- * @package    booktool
- * @subpackage epubimport
+ * @package    booktool_epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
 
 /**
  * Adds the EPUB import action to the book settings navigation.

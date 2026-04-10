@@ -17,8 +17,7 @@
 /**
  * Import EPUB form.
  *
- * @package    booktool
- * @subpackage epubimport
+ * @package    booktool_epubimport
  * @copyright  2013-2018 Mikael Ylikoski
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -26,22 +25,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/formslib.php');
-
-/**
- * Returns a plugin string when available, with an English fallback for staged builds.
- *
- * @param string $identifier String identifier.
- * @param string $fallback English fallback.
- * @return string
- */
-function booktool_epubimport_local_string(string $identifier, string $fallback): string {
-    $stringmanager = get_string_manager();
-    if ($stringmanager->string_exists($identifier, 'booktool_epubimport')) {
-        return get_string($identifier, 'booktool_epubimport');
-    }
-
-    return $fallback;
-}
 
 /**
  * Moodle form for EPUB upload and import mode selection.
@@ -65,14 +48,14 @@ class booktool_epubimport_form extends moodleform {
         $workflow = (string)($data['workflow'] ?? self::WORKFLOW_EXISTING);
 
         $heading = $workflow === self::WORKFLOW_EXISTING
-            ? booktool_epubimport_local_string('importchapters', 'Import chapters from ebook')
-            : booktool_epubimport_local_string('importepub', 'Import ebook as new book');
+            ? get_string('importchapters', 'booktool_epubimport')
+            : get_string('importnewbook', 'booktool_epubimport');
 
         $mform->addElement('header', 'general', $heading);
         $mform->addElement(
             'filepicker',
             'importfile',
-            booktool_epubimport_local_string('epubfile', 'EPUB ebook'),
+            get_string('epubfile', 'booktool_epubimport'),
             null,
             ['accepted_types' => ['.epub']]
         );
@@ -82,16 +65,10 @@ class booktool_epubimport_form extends moodleform {
             $mform->addElement(
                 'select',
                 'importmode',
-                booktool_epubimport_local_string('importmode', 'Import mode'),
+                get_string('importmode', 'booktool_epubimport'),
                 [
-                    self::MODE_APPEND => booktool_epubimport_local_string(
-                        'importmodeappend',
-                        'Add chapters to this book'
-                    ),
-                    self::MODE_REPLACE => booktool_epubimport_local_string(
-                        'importmodereplace',
-                        'Replace all chapters'
-                    ),
+                    self::MODE_APPEND => get_string('importmodeappend', 'booktool_epubimport'),
+                    self::MODE_REPLACE => get_string('importmodereplace', 'booktool_epubimport'),
                 ]
             );
             $mform->setDefault('importmode', self::MODE_APPEND);
@@ -100,10 +77,7 @@ class booktool_epubimport_form extends moodleform {
                 'advcheckbox',
                 'confirmreplace',
                 '',
-                booktool_epubimport_local_string(
-                    'confirmreplace',
-                    'I understand that replacing will delete the current chapters before import.'
-                )
+                get_string('confirmreplace', 'booktool_epubimport')
             );
             $mform->disabledIf('confirmreplace', 'importmode', 'neq', self::MODE_REPLACE);
         } else {
@@ -169,13 +143,12 @@ class booktool_epubimport_form extends moodleform {
             $fs->delete_area_files($usercontext->id, 'user', 'draft', $draftitemid);
         }
 
-        if (($data['workflow'] ?? self::WORKFLOW_EXISTING) === self::WORKFLOW_EXISTING
+        if (
+            ($data['workflow'] ?? self::WORKFLOW_EXISTING) === self::WORKFLOW_EXISTING
                 && ($data['importmode'] ?? self::MODE_APPEND) === self::MODE_REPLACE
-                && empty($data['confirmreplace'])) {
-            $errors['confirmreplace'] = booktool_epubimport_local_string(
-                'confirmreplaceerror',
-                'Confirm replacement before deleting the current chapters.'
-            );
+                && empty($data['confirmreplace'])
+        ) {
+            $errors['confirmreplace'] = get_string('confirmreplaceerror', 'booktool_epubimport');
         }
 
         return $errors;

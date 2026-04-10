@@ -4,6 +4,8 @@ Import EPUB ebooks into Moodle Book resources. Supports both reflowable and fixe
 
 **Fork of [HaakonME/moodle-booktool_importepub](https://github.com/HaakonME/moodle-booktool_importepub)**, originally by Mikael Ylikoski (Ordbrand). Modernized for Moodle 5.x with a complete rewrite of the import pipeline.
 
+Component name: `booktool_epubimport`
+
 ## Requirements
 
 - **Moodle 5.0+** (tested on 5.1.3)
@@ -16,7 +18,7 @@ Import EPUB ebooks into Moodle Book resources. Supports both reflowable and fixe
 
 ```bash
 cd /path/to/moodle/mod/book/tool
-git clone https://github.com/astra-openclaw/moodle-booktool_importepub.git importepub
+git clone https://github.com/astra-openclaw/moodle-booktool_importepub.git epubimport
 ```
 
 ### Manual Download
@@ -78,7 +80,7 @@ This is **not required** for standard EPUBs. The tools live outside the Moodle p
 
 ```bash
 cd /path/to/moodle
-vendor/bin/phpunit --testsuite booktool_importepub
+vendor/bin/phpunit --testsuite booktool_epubimport
 ```
 
 ## License

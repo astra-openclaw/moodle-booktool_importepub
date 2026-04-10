@@ -1,4 +1,19 @@
 <?php
+// This file is part of Lucimoo
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace booktool_epubimport;
@@ -10,10 +25,12 @@ use InvalidArgumentException;
 use RuntimeException;
 use stdClass;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Imports fixed-layout EPUB page images into Moodle Book chapters.
+ *
+ * @package    booktool_epubimport
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class fixed_layout_importer {
     /** @var int XML parsing flags mandated for XHTML parsing. */
@@ -34,9 +51,7 @@ final class fixed_layout_importer {
     /** @var string Extraction directory for the EPUB package. */
     private string $tempdir;
 
-    /**
-     * @var array<int, array{id: string, href: string, media_type: string}>
-     */
+    /** @var array<int, array<string, string>> Parsed OPF spine items. */
     private array $spine;
 
     /** @var array<string, string> Extracted files keyed by EPUB-root-relative path. */
@@ -118,21 +133,8 @@ final class fixed_layout_importer {
     /**
      * Builds the rendered HTML and file list for one mapped chapter range.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * } $planentry
-     * @return array{
-     *     title: string,
-     *     subchapter: bool,
-     *     content: string,
-     *     assets: array<int, array{source_path: string, filename: string}>
-     * }
+     * @param array $planentry Mapped chapter plan entry.
+     * @return array Prepared chapter content and asset descriptors.
      */
     private function prepare_chapter(array $planentry): array {
         $title = $this->chapter_title($planentry);
@@ -193,12 +195,8 @@ final class fixed_layout_importer {
     /**
      * Prepares the background image and popup assets for a single XHTML spine item.
      *
-     * @param array{id: string, href: string, media_type: string} $spineitem
-     * @return array{
-     *     page_number: int,
-     *     background: array{root_path: string, full_path: string, filename: string}|null,
-     *     popups: array<int, array{root_path: string, full_path: string, filename: string}>
-     * }
+     * @param array $spineitem Parsed OPF spine item.
+     * @return array Page background and popup asset details.
      */
     private function prepare_page(array $spineitem): array {
         $href = trim((string)($spineitem['href'] ?? ''));
@@ -252,7 +250,7 @@ final class fixed_layout_importer {
      * Stores page and popup image files into the Moodle chapter file area.
      *
      * @param stdClass $chapter Inserted chapter record.
-     * @param array<int, array{source_path: string, filename: string}> $assets
+     * @param array<int, array<string, string>> $assets Chapter asset descriptors.
      */
     private function store_chapter_assets(stdClass $chapter, array $assets): void {
         $fs = get_file_storage();
@@ -317,7 +315,7 @@ final class fixed_layout_importer {
      *
      * @param DOMXPath $xpath Page XPath helper.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}>
+     * @return array<int, array<string, mixed>> Parsed CSS rules.
      */
     private function load_stylesheets(DOMXPath $xpath, string $xhtmlrootpath): array {
         $rules = [];
@@ -369,7 +367,7 @@ final class fixed_layout_importer {
      *
      * @param string $css Raw CSS text.
      * @param string $sourcepath Root-relative path of the CSS source file.
-     * @return array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}>
+     * @return array<int, array<string, mixed>> Parsed CSS rules.
      */
     private function parse_css_rules(string $css, string $sourcepath): array {
         $css = preg_replace('!/\*.*?\*/!s', '', $css);
@@ -410,9 +408,9 @@ final class fixed_layout_importer {
      *
      * @param DOMElement|null $bodyimage Body image container element.
      * @param DOMXPath $xpath Page XPath helper.
-     * @param array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}> $stylesheets
+     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array{root_path: string, full_path: string, filename: string}|null
+     * @return array|null Background asset descriptor, or null when none is found.
      */
     private function detect_background_image(
         ?DOMElement $bodyimage,
@@ -472,7 +470,7 @@ final class fixed_layout_importer {
      * Falls back to page image filename conventions like images/page0015.jpg.
      *
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array{root_path: string, full_path: string, filename: string}|null
+     * @return array|null Background asset descriptor, or null when no file matches.
      */
     private function detect_background_by_filename(string $xhtmlrootpath): ?array {
         $basename = pathinfo($xhtmlrootpath, PATHINFO_FILENAME);
@@ -511,9 +509,9 @@ final class fixed_layout_importer {
      * Extracts popup image assets from opacity:0 containers.
      *
      * @param DOMXPath $xpath Page XPath helper.
-     * @param array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}> $stylesheets
+     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array<int, array{root_path: string, full_path: string, filename: string}>
+     * @return array<int, array<string, string>> Popup asset descriptors.
      */
     private function extract_popup_images(DOMXPath $xpath, array $stylesheets, string $xhtmlrootpath): array {
         $popups = [];
@@ -545,7 +543,7 @@ final class fixed_layout_importer {
      * Returns whether an image sits inside an opacity:0 popup container.
      *
      * @param DOMElement $image Image element to inspect.
-     * @param array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}> $stylesheets
+     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
      * @return bool
      */
     private function is_popup_image(DOMElement $image, array $stylesheets): bool {
@@ -566,7 +564,7 @@ final class fixed_layout_importer {
      * Returns whether an element has opacity zero via inline style or a matching CSS rule.
      *
      * @param DOMElement $element Element to inspect.
-     * @param array<int, array{selectors: array<int, string>, declarations: string, source_root_path: string}> $stylesheets
+     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
      * @return bool
      */
     private function element_has_zero_opacity(DOMElement $element, array $stylesheets): bool {
@@ -605,12 +603,14 @@ final class fixed_layout_importer {
      */
     private function extract_css_url(string $declarations, array $properties): string {
         foreach ($properties as $property) {
-            if (preg_match(
-                '/(?:^|[;{])\s*' . preg_quote($property, '/') .
-                '\s*:\s*[^;]*url\((["\']?)([^)"\']+)\1\)/i',
-                $declarations,
-                $matches
-            ) === 1) {
+            if (
+                preg_match(
+                    '/(?:^|[;{])\s*' . preg_quote($property, '/') .
+                    '\s*:\s*[^;]*url\((["\']?)([^)"\']+)\1\)/i',
+                    $declarations,
+                    $matches
+                ) === 1
+            ) {
                 return trim($matches[2]);
             }
         }
@@ -719,7 +719,7 @@ final class fixed_layout_importer {
      *
      * @param string $path Path or href to resolve.
      * @param string|null $basepath Optional root-relative base document path.
-     * @return array{root_path: string, full_path: string}|null
+     * @return array|null Resolved root-relative and absolute file paths, or null when unavailable.
      */
     private function resolve_package_file(string $path, ?string $basepath = null): ?array {
         $path = trim($path);
@@ -813,8 +813,8 @@ final class fixed_layout_importer {
     /**
      * Normalises a resolved file into a reusable asset descriptor.
      *
-     * @param array{root_path: string, full_path: string} $resolved
-     * @return array{root_path: string, full_path: string, filename: string}
+     * @param array $resolved Resolved root-relative and absolute file paths.
+     * @return array Asset descriptor including the preferred filename.
      */
     private function asset_descriptor(array $resolved): array {
         return [
@@ -837,7 +837,7 @@ final class fixed_layout_importer {
         $previousloader = null;
 
         if (PHP_VERSION_ID < 80000) {
-            $previousloader = libxml_disable_entity_loader(true);
+            $previousloader = self::disable_xml_entity_loader(true);
         }
 
         $document = new DOMDocument();
@@ -847,7 +847,7 @@ final class fixed_layout_importer {
         libxml_use_internal_errors($previouserrors);
 
         if (PHP_VERSION_ID < 80000 && $previousloader !== null) {
-            libxml_disable_entity_loader($previousloader);
+            self::disable_xml_entity_loader($previousloader);
         }
 
         if (!$loaded) {
@@ -863,17 +863,26 @@ final class fixed_layout_importer {
     }
 
     /**
+     * Disables libxml entity loading on legacy libxml releases only.
+     *
+     * @param bool $disable Whether entity loading should be disabled.
+     * @return bool Previous entity-loader state for legacy libxml versions.
+     */
+    private static function disable_xml_entity_loader(bool $disable): bool {
+        if (LIBXML_VERSION >= 20900) {
+            return true;
+        }
+
+        // @codeCoverageIgnoreStart
+        // phpcs:ignore moodle.PHP.DeprecatedFunctions.Deprecated -- Needed only for legacy libxml behaviour.
+        return libxml_disable_entity_loader($disable);
+        // @codeCoverageIgnoreEnd
+    }
+
+    /**
      * Returns a readable title for a chapter plan entry.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * } $planentry
+     * @param array $planentry Mapped chapter plan entry.
      * @return string
      */
     private function chapter_title(array $planentry): string {
@@ -906,7 +915,7 @@ final class fixed_layout_importer {
      * Splits a href into path and fragment components.
      *
      * @param string $href Href to split.
-     * @return array{0: string, 1: string}
+     * @return array Path and fragment components.
      */
     private function split_fragment(string $href): array {
         $parts = explode('#', $href, 2);
@@ -1044,7 +1053,7 @@ final class fixed_layout_importer {
      * @throws RuntimeException If the renderer fails.
      */
     private function prerender_pages(): void {
-        $renderscript = __DIR__ . '/../render-pages.js';
+        $renderscript = __DIR__ . '/../cli/render-pages.js';
         if (!is_file($renderscript)) {
             throw new RuntimeException(
                 'Fixed-layout page renderer not found at: ' . $renderscript .

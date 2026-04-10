@@ -1,4 +1,19 @@
 <?php
+// This file is part of Lucimoo
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 declare(strict_types=1);
 
 namespace booktool_epubimport;
@@ -11,10 +26,12 @@ use InvalidArgumentException;
 use RuntimeException;
 use stdClass;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Imports reflowable EPUB XHTML content into Moodle Book chapters.
+ *
+ * @package    booktool_epubimport
+ * @copyright  2013-2018 Mikael Ylikoski
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class reflowable_importer {
     /** @var int XML parsing flags mandated for XHTML parsing. */
@@ -38,9 +55,7 @@ final class reflowable_importer {
     /** @var string Extraction directory for the EPUB package. */
     private string $tempdir;
 
-    /**
-     * @var array<int, array{id: string, href: string, media_type: string}>
-     */
+    /** @var array<int, array<string, string>> Parsed OPF spine items. */
     private array $spine;
 
     /** @var array<string, string> Extracted files keyed by EPUB-root-relative path. */
@@ -141,25 +156,8 @@ final class reflowable_importer {
     /**
      * Builds the final chapter payloads from the TOC plan.
      *
-     * @param array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * }> $plan
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }>
+     * @param array<int, array<string, mixed>> $plan Chapter plan entries.
+     * @return array<int, array<string, mixed>> Prepared chapter payloads.
      */
     private function build_payloads(array $plan): array {
         $payloads = [];
@@ -183,25 +181,8 @@ final class reflowable_importer {
     /**
      * Builds a single TOC-driven chapter payload from a mapped spine range.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * } $planentry
-     * @return array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }
+     * @param array $planentry Mapped chapter plan entry.
+     * @return array Prepared chapter payload.
      */
     private function prepare_payload(array $planentry): array {
         $document = $this->create_html_document();
@@ -297,26 +278,8 @@ final class reflowable_importer {
     /**
      * Splits a simple single-level TOC payload by heading tags as a compatibility fallback.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * } $payload
-     * @return array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }>
+     * @param array $payload Prepared chapter payload.
+     * @return array<int, array> Split chapter payloads.
      */
     private function split_payload_by_headings(array $payload): array {
         $headingtag = $this->detect_heading_split_tag($payload['document']);
@@ -423,16 +386,7 @@ final class reflowable_importer {
      * @param array<string, string> $fragmenttargets Original fragment target map.
      * @param DOMElement $segment Split content container.
      * @param array<int, DOMNode> $styletemplates Style nodes to prepend to every split chapter.
-     * @return array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }
+     * @return array Split chapter payload.
      */
     private function build_split_payload(
         string $title,
@@ -471,27 +425,9 @@ final class reflowable_importer {
     /**
      * Rebuilds source and fragment metadata after payload splitting.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * } $payload
+     * @param array $payload Split chapter payload.
      * @param array<string, string> $originalfragments Original fragment target map.
-     * @return array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }
+     * @return array Payload with refreshed source and fragment metadata.
      */
     private function rebuild_payload_metadata(array $payload, array $originalfragments): array {
         $xpath = new DOMXPath($payload['document']);
@@ -543,16 +479,7 @@ final class reflowable_importer {
     /**
      * Rewrites internal XHTML links after chapter ids are known.
      *
-     * @param array<int, array{
-     *     title: string,
-     *     subchapter: bool,
-     *     importsrc: string,
-     *     document: DOMDocument,
-     *     assetmap: array<string, string>,
-     *     sourceanchors: array<string, string>,
-     *     fragmenttargets: array<string, string>,
-     *     chapterid: int
-     * }> $payloads
+     * @param array<int, array<string, mixed>> $payloads Prepared chapter payloads.
      */
     private function rewrite_internal_links(array &$payloads): void {
         $chapterbysource = [];
@@ -729,7 +656,8 @@ final class reflowable_importer {
     private function remove_unwanted_nodes(DOMElement $section): void {
         $xpath = new DOMXPath($section->ownerDocument);
         $nodes = $xpath->query(
-            './/*[local-name()="script" or local-name()="style" or local-name()="base" or local-name()="meta" or local-name()="title"]',
+            './/*[local-name()="script" or local-name()="style" or local-name()="base"'
+                . ' or local-name()="meta" or local-name()="title"]',
             $section
         );
 
@@ -895,7 +823,7 @@ final class reflowable_importer {
     private function rewrite_css_urls(string $css, string $basepath, array &$assetmap): string {
         $rewritten = preg_replace_callback(
             '/url\(\s*(["\']?)([^)"\']+)\1\s*\)/i',
-            function(array $matches) use ($basepath, &$assetmap): string {
+            function (array $matches) use ($basepath, &$assetmap): string {
                 $url = trim($matches[2]);
                 if (
                     $url === '' ||
@@ -1132,7 +1060,10 @@ final class reflowable_importer {
 
         for ($level = 1; $level <= 6; $level++) {
             $tag = 'h' . $level;
-            $nodes = $xpath->query('//div[contains(concat(" ", normalize-space(@class), " "), " lucimoo ")]//*[local-name()="' . $tag . '"]');
+            $nodes = $xpath->query(
+                '//div[contains(concat(" ", normalize-space(@class), " "), " lucimoo ")]'
+                    . '//*[local-name()="' . $tag . '"]'
+            );
             $count = $nodes === false ? 0 : $nodes->length;
 
             if ($count >= 2) {
@@ -1270,7 +1201,7 @@ final class reflowable_importer {
      *
      * @param string $path Path or href to resolve.
      * @param string|null $basepath Optional root-relative base document path.
-     * @return array{root_path: string, full_path: string}|null
+     * @return array|null Resolved root-relative and absolute file paths, or null when unavailable.
      */
     private function resolve_package_file(string $path, ?string $basepath = null): ?array {
         $path = trim($path);
@@ -1374,7 +1305,7 @@ final class reflowable_importer {
         $previousloader = null;
 
         if (PHP_VERSION_ID < 80000) {
-            $previousloader = libxml_disable_entity_loader(true);
+            $previousloader = self::disable_xml_entity_loader(true);
         }
 
         $document = new DOMDocument();
@@ -1384,7 +1315,7 @@ final class reflowable_importer {
         libxml_use_internal_errors($previouserrors);
 
         if (PHP_VERSION_ID < 80000 && $previousloader !== null) {
-            libxml_disable_entity_loader($previousloader);
+            self::disable_xml_entity_loader($previousloader);
         }
 
         if (!$loaded) {
@@ -1397,6 +1328,23 @@ final class reflowable_importer {
         }
 
         return $document;
+    }
+
+    /**
+     * Disables libxml entity loading on legacy libxml releases only.
+     *
+     * @param bool $disable Whether entity loading should be disabled.
+     * @return bool Previous entity-loader state for legacy libxml versions.
+     */
+    private static function disable_xml_entity_loader(bool $disable): bool {
+        if (LIBXML_VERSION >= 20900) {
+            return true;
+        }
+
+        // @codeCoverageIgnoreStart
+        // phpcs:ignore moodle.PHP.DeprecatedFunctions.Deprecated -- Needed only for legacy libxml behaviour.
+        return libxml_disable_entity_loader($disable);
+        // @codeCoverageIgnoreEnd
     }
 
     /**
@@ -1456,15 +1404,7 @@ final class reflowable_importer {
     /**
      * Returns a readable title for a chapter plan entry.
      *
-     * @param array{
-     *     title: string,
-     *     subchapter: bool,
-     *     start_href: string,
-     *     end_href: string,
-     *     spine_start: int,
-     *     spine_end: int,
-     *     toc_level: int
-     * } $planentry
+     * @param array $planentry Mapped chapter plan entry.
      * @return string
      */
     private function chapter_title(array $planentry): string {
@@ -1512,7 +1452,7 @@ final class reflowable_importer {
     /**
      * Returns the maximum TOC depth.
      *
-     * @param array<int, array{title: string, href: string, level: int, children: array}> $entries
+     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
      * @return int
      */
     private function max_toc_level(array $entries): int {
@@ -1573,7 +1513,7 @@ final class reflowable_importer {
      * @return string
      */
     private function first_source_path(array $sourceanchors): string {
-        foreach ($sourceanchors as $path => $_anchor) {
+        foreach (array_keys($sourceanchors) as $path) {
             return $path;
         }
 
@@ -1685,7 +1625,7 @@ final class reflowable_importer {
      * Splits a href into path and fragment components.
      *
      * @param string $href Href to split.
-     * @return array{0: string, 1: string}
+     * @return array Path and fragment components.
      */
     private function split_fragment(string $href): array {
         $parts = explode('#', $href, 2);

@@ -1,5 +1,20 @@
 #!/usr/bin/env node
 /**
+ * This file is part of Lucimoo.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <http://www.gnu.org/licenses/>.
+ *
  * flatten-epub.js — Pre-renders fixed-layout EPUB pages to composite JPGs.
  *
  * Takes an EPUB with CSS-positioned text overlays (e.g. McGraw-Hill Inspire Science)
@@ -12,11 +27,12 @@
  * If output is omitted, writes to <input>-flat.epub.
  */
 
-const { chromium } = require('playwright');
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const os = require('os');
+import { execSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
+import { chromium } from 'playwright';
 
 const args = process.argv.slice(2);
 const positional = args.filter(a => !a.startsWith('--'));
