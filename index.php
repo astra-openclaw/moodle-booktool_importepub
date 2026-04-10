@@ -376,7 +376,7 @@ function booktool_epubimport_bump_revision(int $bookid): void {
  *
  * @param int $chaptercount Number of created chapters.
  * @param string $layout Detected EPUB layout.
- * @param array<int, string> $warnings Non-fatal mapper warnings.
+ * @param array $warnings Non-fatal mapper warnings.
  * @return string
  */
 function booktool_epubimport_build_success_message(int $chaptercount, string $layout, array $warnings): string {

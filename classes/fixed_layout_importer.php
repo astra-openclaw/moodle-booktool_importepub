@@ -90,7 +90,7 @@ final class fixed_layout_importer {
     /**
      * Imports the mapped fixed-layout chapter plan into Moodle Book chapters.
      *
-     * @return array<int, stdClass> Created chapter records.
+     * @return array Created chapter records.
      */
     public function import(): array {
         global $DB;
@@ -225,6 +225,11 @@ final class fixed_layout_importer {
 
     /**
      * Creates and inserts a Moodle Book chapter record.
+     *
+     * @param string $title Title.
+     * @param string $content Content.
+     * @param bool $subchapter Subchapter.
+     * @param int $pagenum Pagenum.
      */
     private function create_chapter_record(string $title, string $content, bool $subchapter, int $pagenum): stdClass {
         global $DB;
@@ -250,7 +255,7 @@ final class fixed_layout_importer {
      * Stores page and popup image files into the Moodle chapter file area.
      *
      * @param stdClass $chapter Inserted chapter record.
-     * @param array<int, array<string, string>> $assets Chapter asset descriptors.
+     * @param array $assets Chapter asset descriptors.
      */
     private function store_chapter_assets(stdClass $chapter, array $assets): void {
         $fs = get_file_storage();
@@ -315,7 +320,7 @@ final class fixed_layout_importer {
      *
      * @param DOMXPath $xpath Page XPath helper.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array<int, array<string, mixed>> Parsed CSS rules.
+     * @return array Parsed CSS rules.
      */
     private function load_stylesheets(DOMXPath $xpath, string $xhtmlrootpath): array {
         $rules = [];
@@ -367,7 +372,7 @@ final class fixed_layout_importer {
      *
      * @param string $css Raw CSS text.
      * @param string $sourcepath Root-relative path of the CSS source file.
-     * @return array<int, array<string, mixed>> Parsed CSS rules.
+     * @return array Parsed CSS rules.
      */
     private function parse_css_rules(string $css, string $sourcepath): array {
         $css = preg_replace('!/\*.*?\*/!s', '', $css);
@@ -408,7 +413,7 @@ final class fixed_layout_importer {
      *
      * @param DOMElement|null $bodyimage Body image container element.
      * @param DOMXPath $xpath Page XPath helper.
-     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
+     * @param array $stylesheets Parsed CSS rules.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
      * @return array|null Background asset descriptor, or null when none is found.
      */
@@ -509,9 +514,9 @@ final class fixed_layout_importer {
      * Extracts popup image assets from opacity:0 containers.
      *
      * @param DOMXPath $xpath Page XPath helper.
-     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
+     * @param array $stylesheets Parsed CSS rules.
      * @param string $xhtmlrootpath Root-relative path of the page XHTML file.
-     * @return array<int, array<string, string>> Popup asset descriptors.
+     * @return array Popup asset descriptors.
      */
     private function extract_popup_images(DOMXPath $xpath, array $stylesheets, string $xhtmlrootpath): array {
         $popups = [];
@@ -543,7 +548,7 @@ final class fixed_layout_importer {
      * Returns whether an image sits inside an opacity:0 popup container.
      *
      * @param DOMElement $image Image element to inspect.
-     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
+     * @param array $stylesheets Parsed CSS rules.
      * @return bool
      */
     private function is_popup_image(DOMElement $image, array $stylesheets): bool {
@@ -564,7 +569,7 @@ final class fixed_layout_importer {
      * Returns whether an element has opacity zero via inline style or a matching CSS rule.
      *
      * @param DOMElement $element Element to inspect.
-     * @param array<int, array<string, mixed>> $stylesheets Parsed CSS rules.
+     * @param array $stylesheets Parsed CSS rules.
      * @return bool
      */
     private function element_has_zero_opacity(DOMElement $element, array $stylesheets): bool {
@@ -589,6 +594,8 @@ final class fixed_layout_importer {
 
     /**
      * Returns whether a CSS declaration block sets opacity to zero.
+     *
+     * @param string $declarations Declarations.
      */
     private function declaration_has_zero_opacity(string $declarations): bool {
         return preg_match('/(?:^|[;{])\s*opacity\s*:\s*0(?:\.0+)?\s*(?:;|$)/i', $declarations) === 1;
@@ -598,7 +605,7 @@ final class fixed_layout_importer {
      * Extracts the first CSS url() value from a declaration block.
      *
      * @param string $declarations Declaration block or style attribute.
-     * @param array<int, string> $properties Property names to inspect in order.
+     * @param array $properties Property names to inspect in order.
      * @return string
      */
     private function extract_css_url(string $declarations, array $properties): string {
@@ -623,6 +630,9 @@ final class fixed_layout_importer {
      *
      * Supports the selector shapes used by page CSS for this importer:
      * `#id`, `.class`, `tag`, `tag#id`, `tag.class`, and chained class selectors.
+     *
+     * @param string $selector Selector.
+     * @param DOMElement $element Element.
      */
     private function selector_matches_element(string $selector, DOMElement $element): bool {
         $selector = trim($selector);
@@ -686,6 +696,8 @@ final class fixed_layout_importer {
 
     /**
      * Removes the invisible positioned word overlay container from the page DOM.
+     *
+     * @param DOMXPath $xpath Xpath.
      */
     private function remove_page_container(DOMXPath $xpath): void {
         $nodes = $xpath->query('//*[local-name()="div" and @id="PageContainer"]');
@@ -704,6 +716,9 @@ final class fixed_layout_importer {
 
     /**
      * Returns the first matching element for an XPath query.
+     *
+     * @param DOMXPath $xpath Xpath.
+     * @param string $expression Expression.
      */
     private function find_first_element(DOMXPath $xpath, string $expression): ?DOMElement {
         $nodes = $xpath->query($expression);
@@ -774,7 +789,7 @@ final class fixed_layout_importer {
     /**
      * Registers a chapter asset and returns the unique filename used in chapter HTML.
      *
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      * @param string $sourcepath Absolute filesystem path to the source asset.
      * @param string $filename Preferred filename in the chapter file area.
      * @return string
@@ -826,6 +841,9 @@ final class fixed_layout_importer {
 
     /**
      * Loads and parses an XML/XHTML file using the mandated security flags.
+     *
+     * @param string $filepath Filepath.
+     * @param string $label Label.
      */
     private function load_xml_file(string $filepath, string $label): DOMDocument {
         $xml = file_get_contents($filepath);
@@ -902,6 +920,8 @@ final class fixed_layout_importer {
 
     /**
      * Extracts a human-readable page number from a page or image path.
+     *
+     * @param string $path Path.
      */
     private function page_number_from_path(string $path): int {
         if (preg_match('/(\d+)/', basename($path), $matches) === 1) {
@@ -991,6 +1011,8 @@ final class fixed_layout_importer {
 
     /**
      * Returns whether a href starts with a URI scheme.
+     *
+     * @param string $href Href.
      */
     private function has_uri_scheme(string $href): bool {
         return preg_match('/^[a-z][a-z0-9+.-]*:/i', $href) === 1;

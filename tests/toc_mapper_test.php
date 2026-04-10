@@ -237,8 +237,8 @@ final class toc_mapper_test extends advanced_testcase {
      * @param string $title Entry label.
      * @param string $href Entry href.
      * @param int $level Entry nesting level.
-     * @param array<int, array<string, mixed>> $children Child TOC entries.
-     * @return array<string, mixed>
+     * @param array $children Child TOC entries.
+     * @return array
      */
     private function toc_entry(string $title, string $href, int $level, array $children = []): array {
         return [
@@ -255,7 +255,7 @@ final class toc_mapper_test extends advanced_testcase {
      * @param string $id Spine id.
      * @param string $href Spine href.
      * @param string $mediatype Spine media type.
-     * @return array<string, string>
+     * @return array
      */
     private function spine_item(string $id, string $href, string $mediatype = 'application/xhtml+xml'): array {
         return [

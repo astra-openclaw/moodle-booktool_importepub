@@ -101,7 +101,7 @@ final class reflowable_importer {
     /**
      * Imports the mapped reflowable chapter plan into Moodle Book chapters.
      *
-     * @return array<int, stdClass> Created chapter records.
+     * @return array Created chapter records.
      */
     public function import(): array {
         global $DB;
@@ -156,8 +156,8 @@ final class reflowable_importer {
     /**
      * Builds the final chapter payloads from the TOC plan.
      *
-     * @param array<int, array<string, mixed>> $plan Chapter plan entries.
-     * @return array<int, array<string, mixed>> Prepared chapter payloads.
+     * @param array $plan Chapter plan entries.
+     * @return array Prepared chapter payloads.
      */
     private function build_payloads(array $plan): array {
         $payloads = [];
@@ -279,7 +279,7 @@ final class reflowable_importer {
      * Splits a simple single-level TOC payload by heading tags as a compatibility fallback.
      *
      * @param array $payload Prepared chapter payload.
-     * @return array<int, array> Split chapter payloads.
+     * @return array Split chapter payloads.
      */
     private function split_payload_by_headings(array $payload): array {
         $headingtag = $this->detect_heading_split_tag($payload['document']);
@@ -382,10 +382,10 @@ final class reflowable_importer {
      * @param string $title Chapter title.
      * @param bool $subchapter Whether the split segment is a subchapter.
      * @param string $importsrc Original import source path.
-     * @param array<string, string> $assetmap Full asset map from the unsplit payload.
-     * @param array<string, string> $fragmenttargets Original fragment target map.
+     * @param array $assetmap Full asset map from the unsplit payload.
+     * @param array $fragmenttargets Original fragment target map.
      * @param DOMElement $segment Split content container.
-     * @param array<int, DOMNode> $styletemplates Style nodes to prepend to every split chapter.
+     * @param array $styletemplates Style nodes to prepend to every split chapter.
      * @return array Split chapter payload.
      */
     private function build_split_payload(
@@ -426,7 +426,7 @@ final class reflowable_importer {
      * Rebuilds source and fragment metadata after payload splitting.
      *
      * @param array $payload Split chapter payload.
-     * @param array<string, string> $originalfragments Original fragment target map.
+     * @param array $originalfragments Original fragment target map.
      * @return array Payload with refreshed source and fragment metadata.
      */
     private function rebuild_payload_metadata(array $payload, array $originalfragments): array {
@@ -479,7 +479,7 @@ final class reflowable_importer {
     /**
      * Rewrites internal XHTML links after chapter ids are known.
      *
-     * @param array<int, array<string, mixed>> $payloads Prepared chapter payloads.
+     * @param array $payloads Prepared chapter payloads.
      */
     private function rewrite_internal_links(array &$payloads): void {
         $chapterbysource = [];
@@ -574,6 +574,11 @@ final class reflowable_importer {
 
     /**
      * Creates and inserts a placeholder Moodle Book chapter record.
+     *
+     * @param string $title Title.
+     * @param bool $subchapter Subchapter.
+     * @param string $importsrc Importsrc.
+     * @param int $pagenum Pagenum.
      */
     private function create_placeholder_chapter(string $title, bool $subchapter, string $importsrc, int $pagenum): stdClass {
         global $DB;
@@ -598,6 +603,9 @@ final class reflowable_importer {
 
     /**
      * Updates the final chapter HTML after sanitization and link rewriting.
+     *
+     * @param int $chapterid Chapterid.
+     * @param string $content Content.
      */
     private function update_chapter_content(int $chapterid, string $content): void {
         global $DB;
@@ -614,7 +622,7 @@ final class reflowable_importer {
      * Stores media files into the Moodle chapter file area.
      *
      * @param stdClass $chapter Inserted chapter record.
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      */
     private function store_chapter_assets(stdClass $chapter, array $assetmap): void {
         $fs = get_file_storage();
@@ -643,6 +651,10 @@ final class reflowable_importer {
 
     /**
      * Appends imported body child nodes into a wrapper section.
+     *
+     * @param DOMDocument $document Document.
+     * @param DOMElement $section Section.
+     * @param DOMElement $body Body.
      */
     private function append_body_children(DOMDocument $document, DOMElement $section, DOMElement $body): void {
         foreach ($body->childNodes as $child) {
@@ -652,6 +664,8 @@ final class reflowable_importer {
 
     /**
      * Removes nodes that should not survive into Moodle chapter HTML.
+     *
+     * @param DOMElement $section Section.
      */
     private function remove_unwanted_nodes(DOMElement $section): void {
         $xpath = new DOMXPath($section->ownerDocument);
@@ -684,8 +698,8 @@ final class reflowable_importer {
      *
      * @param DOMXPath $xpath XHTML XPath helper.
      * @param string $xhtmlrootpath Root-relative path of the XHTML file.
-     * @param array<string, string> $assetmap Map of filename => source path.
-     * @return array<int, string>
+     * @param array $assetmap Map of filename => source path.
+     * @return array
      */
     private function collect_scoped_styles(DOMXPath $xpath, string $xhtmlrootpath, array &$assetmap): array {
         $styles = [];
@@ -747,7 +761,7 @@ final class reflowable_importer {
      *
      * @param string $css Raw CSS text.
      * @param string $basepath Root-relative path of the CSS source.
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      * @return string
      */
     private function scope_css(string $css, string $basepath, array &$assetmap): string {
@@ -767,6 +781,8 @@ final class reflowable_importer {
 
     /**
      * Recursively scopes CSS blocks under `.lucimoo`.
+     *
+     * @param string $css Css.
      */
     private function scope_css_blocks(string $css): string {
         $result = '';
@@ -817,7 +833,7 @@ final class reflowable_importer {
      *
      * @param string $css Raw CSS text.
      * @param string $basepath Root-relative path of the CSS source.
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      * @return string
      */
     private function rewrite_css_urls(string $css, string $basepath, array &$assetmap): string {
@@ -851,6 +867,8 @@ final class reflowable_importer {
 
     /**
      * Returns whether a CSS at-rule contains nested selectors that should be scoped recursively.
+     *
+     * @param string $header Header.
      */
     private function at_rule_contains_nested_selectors(string $header): bool {
         $header = ltrim($header);
@@ -867,6 +885,8 @@ final class reflowable_importer {
 
     /**
      * Prefixes each selector in a comma-separated list with `.lucimoo`.
+     *
+     * @param string $selectors Selectors.
      */
     private function scope_selector_list(string $selectors): string {
         $parts = array_values(
@@ -883,6 +903,8 @@ final class reflowable_importer {
 
     /**
      * Prefixes one selector with `.lucimoo`.
+     *
+     * @param string $selector Selector.
      */
     private function scope_selector(string $selector): string {
         $selector = trim($selector);
@@ -916,7 +938,7 @@ final class reflowable_importer {
      *
      * @param DOMElement $root Root element to inspect.
      * @param string $sourcepath Root-relative path of the current XHTML file.
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      */
     private function rewrite_embedded_assets(DOMElement $root, string $sourcepath, array &$assetmap): void {
         $xpath = new DOMXPath($root->ownerDocument);
@@ -978,7 +1000,7 @@ final class reflowable_importer {
      * @param DOMElement $element DOM element with a file-bearing attribute.
      * @param string $attribute Attribute name.
      * @param string $sourcepath Root-relative path of the current XHTML file.
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      */
     private function rewrite_asset_attribute(DOMElement $element, string $attribute, string $sourcepath, array &$assetmap): void {
         $value = trim($element->getAttribute($attribute));
@@ -1000,8 +1022,8 @@ final class reflowable_importer {
      *
      * @param DOMElement $root Root section element.
      * @param string $sourcepath Root-relative path of the current XHTML file.
-     * @param array<string, string> $fragmenttargets Map of sourcepath#fragment => unique id.
-     * @param array<string, bool> $usedids Used ids within the current payload document.
+     * @param array $fragmenttargets Map of sourcepath#fragment => unique id.
+     * @param array $usedids Used ids within the current payload document.
      */
     private function register_fragment_targets(
         DOMElement $root,
@@ -1053,6 +1075,8 @@ final class reflowable_importer {
 
     /**
      * Returns the best heading tag to use for fallback splitting.
+     *
+     * @param DOMDocument $document Document.
      */
     private function detect_heading_split_tag(DOMDocument $document): string {
         $xpath = new DOMXPath($document);
@@ -1080,6 +1104,9 @@ final class reflowable_importer {
 
     /**
      * Splits a container node before the given descendant element.
+     *
+     * @param DOMElement $container Container.
+     * @param DOMElement $element Element.
      */
     private function split_container_before(DOMElement $container, DOMElement $element): DOMElement {
         if ($element->isSameNode($container)) {
@@ -1112,9 +1139,9 @@ final class reflowable_importer {
     /**
      * Filters the asset map down to files actually referenced in a split payload.
      *
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      * @param DOMDocument $document Split payload document.
-     * @return array<string, string>
+     * @return array
      */
     private function filter_assetmap_for_document(array $assetmap, DOMDocument $document): array {
         $html = $this->render_payload_html($document);
@@ -1182,6 +1209,8 @@ final class reflowable_importer {
 
     /**
      * Returns whether a media type is XHTML/HTML content.
+     *
+     * @param string $mediatype Mediatype.
      */
     private function is_html_media_type(string $mediatype): bool {
         $mediatype = strtolower(trim($mediatype));
@@ -1191,6 +1220,8 @@ final class reflowable_importer {
 
     /**
      * Returns whether the given root-relative path is one of the spine XHTML files.
+     *
+     * @param string $rootpath Rootpath.
      */
     private function is_spine_document(string $rootpath): bool {
         return isset($this->spinepaths[$rootpath]);
@@ -1256,7 +1287,7 @@ final class reflowable_importer {
     /**
      * Registers a chapter asset and returns the unique filename used in chapter HTML.
      *
-     * @param array<string, string> $assetmap Map of filename => source path.
+     * @param array $assetmap Map of filename => source path.
      * @param string $sourcepath Absolute filesystem path to the source asset.
      * @param string $filename Preferred filename in the chapter file area.
      * @return string
@@ -1294,6 +1325,9 @@ final class reflowable_importer {
 
     /**
      * Loads and parses an XML/XHTML file using the mandated security flags.
+     *
+     * @param string $filepath Filepath.
+     * @param string $label Label.
      */
     private function load_xml_file(string $filepath, string $label): DOMDocument {
         $xml = file_get_contents($filepath);
@@ -1362,6 +1396,8 @@ final class reflowable_importer {
 
     /**
      * Returns the `.lucimoo` wrapper from a payload document.
+     *
+     * @param DOMDocument $document Document.
      */
     private function get_wrapper(DOMDocument $document): DOMElement {
         $xpath = new DOMXPath($document);
@@ -1379,6 +1415,8 @@ final class reflowable_importer {
 
     /**
      * Renders the `.lucimoo` wrapper HTML for storage in Moodle.
+     *
+     * @param DOMDocument $document Document.
      */
     private function render_payload_html(DOMDocument $document): string {
         $html = $document->saveHTML($this->get_wrapper($document));
@@ -1391,6 +1429,9 @@ final class reflowable_importer {
 
     /**
      * Returns the first matching element for an XPath query.
+     *
+     * @param DOMXPath $xpath Xpath.
+     * @param string $expression Expression.
      */
     private function find_first_element(DOMXPath $xpath, string $expression): ?DOMElement {
         $nodes = $xpath->query($expression);
@@ -1422,6 +1463,8 @@ final class reflowable_importer {
 
     /**
      * Normalises title and heading text for Moodle chapter titles.
+     *
+     * @param string $text Text.
      */
     private function normalise_heading_text(string $text): string {
         $text = trim((string)preg_replace('/\s+/u', ' ', $text));
@@ -1452,7 +1495,7 @@ final class reflowable_importer {
     /**
      * Returns the maximum TOC depth.
      *
-     * @param array<int, array<string, mixed>> $entries Hierarchical TOC entries.
+     * @param array $entries Hierarchical TOC entries.
      * @return int
      */
     private function max_toc_level(array $entries): int {
@@ -1474,6 +1517,7 @@ final class reflowable_importer {
     /**
      * Iterates over all descendant elements, including the root element.
      *
+     * @param DOMElement $root Root.
      * @return \Generator<int, DOMElement>
      */
     private function iterate_elements(DOMElement $root): \Generator {
@@ -1490,6 +1534,8 @@ final class reflowable_importer {
 
     /**
      * Returns the source XHTML path that contains the given element.
+     *
+     * @param DOMElement $element Element.
      */
     private function source_path_for_element(DOMElement $element): string {
         $node = $element;
@@ -1509,7 +1555,7 @@ final class reflowable_importer {
     /**
      * Returns the first source path present in a payload.
      *
-     * @param array<string, string> $sourceanchors Map of source path => anchor id.
+     * @param array $sourceanchors Map of source path => anchor id.
      * @return string
      */
     private function first_source_path(array $sourceanchors): string {
@@ -1522,6 +1568,8 @@ final class reflowable_importer {
 
     /**
      * Builds a stable anchor id for a source-file section wrapper.
+     *
+     * @param string $sourcepath Sourcepath.
      */
     private function source_anchor_id(string $sourcepath): string {
         return 'lucimoo-src-' . substr(md5($sourcepath), 0, 12);
@@ -1529,6 +1577,9 @@ final class reflowable_importer {
 
     /**
      * Builds a stable anchor id for a fragment within one source file.
+     *
+     * @param string $sourcepath Sourcepath.
+     * @param string $fragment Fragment.
      */
     private function fragment_anchor_id(string $sourcepath, string $fragment): string {
         $fragment = preg_replace('/[^a-z0-9_-]+/i', '-', trim($fragment)) ?? '';
@@ -1542,6 +1593,9 @@ final class reflowable_importer {
 
     /**
      * Returns a canonical fragment lookup key.
+     *
+     * @param string $sourcepath Sourcepath.
+     * @param string $fragment Fragment.
      */
     private function fragment_key(string $sourcepath, string $fragment): string {
         return $sourcepath . '#' . trim($fragment);
@@ -1550,7 +1604,7 @@ final class reflowable_importer {
     /**
      * Ensures a generated HTML id is unique within one payload document.
      *
-     * @param array<string, bool> $usedids Used ids map.
+     * @param array $usedids Used ids map.
      * @param string $candidate Preferred id.
      * @return string
      */
@@ -1578,6 +1632,9 @@ final class reflowable_importer {
 
     /**
      * Finds the matching closing brace for a CSS block.
+     *
+     * @param string $css Css.
+     * @param int $openbrace Openbrace.
      */
     private function find_matching_brace(string $css, int $openbrace): ?int {
         $depth = 0;
@@ -1701,6 +1758,8 @@ final class reflowable_importer {
 
     /**
      * Returns whether a href starts with a URI scheme.
+     *
+     * @param string $href Href.
      */
     private function has_uri_scheme(string $href): bool {
         return preg_match('/^[a-z][a-z0-9+.-]*:/i', $href) === 1;

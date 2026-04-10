@@ -407,7 +407,7 @@ XML
      * Creates a ZIP archive from a map of EPUB file contents.
      *
      * @param string $filename Output EPUB filename.
-     * @param array<string, string> $files Archive members keyed by path.
+     * @param array $files Archive members keyed by path.
      * @return string
      */
     private function create_epub_archive(string $filename, array $files): string {
