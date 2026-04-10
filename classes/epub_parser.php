@@ -252,18 +252,11 @@ final class epub_parser {
      * Ensures the extraction directory exists and is empty.
      */
     private function prepare_tempdir(): void {
-        global $CFG;
-
         if (file_exists($this->tempdir) && !is_dir($this->tempdir)) {
             throw new RuntimeException('Temporary extraction path exists and is not a directory.');
         }
 
-        $permissions = $CFG->directorypermissions ?? 02777;
-        if (is_string($permissions)) {
-            $permissions = octdec($permissions);
-        }
-
-        if (!is_dir($this->tempdir) && !mkdir($this->tempdir, $permissions, true) && !is_dir($this->tempdir)) {
+        if (!\make_writable_directory($this->tempdir, false) || !is_writable($this->tempdir)) {
             throw new RuntimeException('Unable to create temporary extraction directory.');
         }
 
