@@ -2,17 +2,17 @@
 
 ## 2.0.0-beta2 (2026-04-11)
 
-Follow-up fixes and release prep for Moodle plugin review.
+Follow-up fixes and release preparation for Moodle plugin review and re-submission.
 
 ### Changed
-- Bumped plugin release metadata for re-submission (`2.0.0-beta2`, build `2026041100`)
-- Renamed the component consistently to `booktool_epubimport`
-- Polished Moodle 5.x cleanup and validation details across the plugin
+- Increased the plugin build number to `2026041100` and updated the release label to `2.0.0-beta2` so the revised package can be submitted as a new review candidate.
+- Standardized the plugin component naming as `booktool_epubimport` throughout the modernized codebase so metadata, packaging, and plugin-directory references are consistent.
+- Refined the Moodle 5.x cleanup work around the rewritten importer so the package, metadata, and validation story are clearer for review.
 
 ### Fixed
-- Hardened EPUB parser temporary directory setup
-- Fixed remaining CI, phpdoc, and test issues
-- Updated the Moodle Plugin CI workflow for the modernized codebase
+- Hardened EPUB parser temporary-directory setup to make extraction and intermediate-file handling safer and more reliable during import.
+- Fixed remaining CI, phpdoc, and automated test issues discovered during review preparation, reducing avoidable validation noise.
+- Updated the Moodle Plugin CI workflow so the modernized codebase is validated with the current project layout and checks.
 
 ## 2.0.0 (2026-03-30)
 
